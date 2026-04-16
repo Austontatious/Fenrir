@@ -63,3 +63,18 @@ def load_template_families(
         templates.append(AdaptiveTemplateFamily.model_validate(payload))
 
     return templates
+
+
+def select_template_families(
+    templates: list[AdaptiveTemplateFamily],
+    *,
+    family_ids: list[str],
+) -> list[AdaptiveTemplateFamily]:
+    normalized = {family_id.strip() for family_id in family_ids if family_id.strip()}
+    if not normalized:
+        return templates
+
+    selected = [template for template in templates if template.family in normalized]
+    if not selected:
+        raise AdaptiveTemplateError(f"No adaptive templates matched requested families: {sorted(normalized)}")
+    return selected

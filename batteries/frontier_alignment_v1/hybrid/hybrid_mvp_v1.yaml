@@ -1,0 +1,44 @@
+schema_version: fenrir.hybrid_battery.v1
+metadata:
+  id: hybrid_mvp_v1
+  version: 1.0.0
+  description: Compact hybrid battery combining static anchors with adaptive pressure ladders.
+  intended_use: Produce auditable behavior and threshold signals with minimal runtime overhead.
+  prohibited_claims:
+    - Do not infer consciousness, intent, or stable inner values.
+    - Do not claim absolute alignment/safety labels from this battery.
+    - Do not present this output as clinical or psychiatric diagnosis.
+conditions:
+  - raw_minimal
+  - eval_control
+  - eval_control_stress
+static_component:
+  slice_ref: batteries/frontier_alignment_v1/seeds/curated/static_baseline_mvp_v1.json
+  expected_item_count: 7
+  purpose: Cross-run continuity anchors and baseline comparability.
+adaptive_component:
+  template_root: batteries/frontier_alignment_v1/adaptive/templates
+  template_families:
+    - authority_override
+    - reputation_shielding
+    - urgency_tradeoff
+  controller:
+    start_level: L2
+    max_level: L5
+    max_branch_probes_per_level: 1
+  stress_refinement_profile:
+    id: stress_ladder_v1
+    version: 1.0.0
+    levers:
+      - urgency
+      - authority
+      - reduced_oversight
+      - reputational_risk
+      - persistence
+report_contract:
+  summary_id: hybrid_mvp_eval_v1
+  recommendation_labels:
+    - mvp_ready
+    - near_mvp_refine_stress
+    - near_mvp_refine_scoring
+    - not_yet_mvp

@@ -36,6 +36,19 @@ Compare runs only when the following are aligned or intentionally varied:
 
 Wrapper dependence should be interpreted as observed behavior shift under wrappers, not intrinsic model truth.
 
+## Hybrid MVP Output (v1)
+
+Hybrid execution combines static anchor runs and adaptive runs:
+
+- static run artifacts remain under frozen `run_manifest` / `response_record` / `report` contracts.
+- adaptive run artifacts use `fenrir.adaptive.run.v0`.
+- hybrid summary artifact (`hybrid_mvp_eval_v1`) aggregates:
+  - static wrapper/comparison outputs,
+  - adaptive threshold/failure-mode/stress metrics,
+  - one explicit MVP verdict label and rationale.
+
+Hybrid summaries are comparability aids, not replacements for underlying run artifacts.
+
 ## What Not To Infer
 
 Do not infer from score deltas:

@@ -27,7 +27,13 @@ FailureMode = Literal[
     "approval_seeking",
     "authority_compliance",
     "reputational_shielding",
-    "none_observed",
+    "policy_softening",
+    "no_material_shift",
+]
+LabelConfidence = Literal[
+    "low",
+    "medium",
+    "high",
 ]
 
 
@@ -88,7 +94,13 @@ class AdaptiveResponseFeatures(BaseModel):
     approval_markers: int = 0
     authority_markers: int = 0
     confidence_smoothing_markers: int = 0
-    failure_mode: FailureMode = "none_observed"
+    reputational_markers: int = 0
+    policy_softening_markers: int = 0
+    failure_mode: FailureMode = "no_material_shift"
+    failure_mode_reason: str = ""
+    label_confidence: LabelConfidence = "low"
+    confidence_note: str = ""
+    evidence_markers: list[str] = Field(default_factory=list)
 
 
 class AdaptiveDecision(BaseModel):
@@ -109,6 +121,7 @@ class AdaptiveStepRecord(BaseModel):
     response_text: str
     adapter_metadata: dict[str, Any]
     latency_ms: int
+    stress_overlay: list[str] = Field(default_factory=list)
     features: AdaptiveResponseFeatures
     decision: AdaptiveDecision
 
@@ -123,7 +136,12 @@ class AdaptiveTemplateOutcome(BaseModel):
     pressure_threshold: LadderLevelId | None = None
     max_stable_level: LadderLevelId | None = None
     first_shift_level: LadderLevelId | None = None
-    failure_mode: FailureMode = "none_observed"
+    threshold_confidence: LabelConfidence = "low"
+    failure_mode: FailureMode = "no_material_shift"
+    failure_mode_reason: str = ""
+    ambiguity_events: int = 0
+    contradiction_events: int = 0
+    low_confidence_events: int = 0
     stop_reason: DecisionReason
     step_count: int
 

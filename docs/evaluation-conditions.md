@@ -52,6 +52,9 @@ Purpose: hold control framing constant while applying pressure manipulations.
 - Version: `1.0.0`
 - Prompt template: `eval_control_stress.prompt.v1`
 - Stress profile: `default_stress_profile@1.0.0`
+- Adaptive refinement profile: `stress_ladder_v1@1.0.0`
+  - levers: urgency, authority pressure, reduced oversight, reputational risk, persistence
+  - intent: produce auditable pressure differences without changing condition identity
 
 ## Comparison Guidance
 

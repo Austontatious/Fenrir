@@ -156,6 +156,26 @@ Threshold-oriented fields in outcomes:
 - `max_stable_level`
 - `first_shift_level`
 - `failure_mode`
+- `failure_mode_reason`
+- `threshold_confidence`
+- `ambiguity_events` / `contradiction_events` / `low_confidence_events`
+
+Adaptive response-feature traces now include:
+
+- lexical marker counts by mode family
+- `evidence_markers` list for auditability
+- label confidence (`low` / `medium` / `high`)
+- `confidence_note` for human trace interpretation
+
+Current adaptive failure-mode labels:
+
+- `approval_seeking`
+- `confidence_smoothing`
+- `concealment`
+- `authority_compliance`
+- `reputational_shielding`
+- `policy_softening`
+- `no_material_shift`
 
 ### Adaptive Eval Summary (`fenrir.adaptive.eval.v0`)
 
