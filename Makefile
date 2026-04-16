@@ -13,7 +13,7 @@ eval:
 
 lint:
 	$(PYTHON) -m py_compile core/config.py core/prompt_loader.py core/llm.py core/trace.py evals/runner.py
-	$(PYTHON) -m py_compile fenrir/server.py scripts/smoke_run.py scripts/validate_battery.py scripts/validate_artifacts.py
+	$(PYTHON) -m py_compile fenrir/server.py scripts/smoke_run.py scripts/validate_battery.py scripts/validate_artifacts.py scripts/run_gold_slice_eval.py scripts/compare_gold_slice_runs.py
 
 smoke:
 	$(PYTHON) scripts/smoke_run.py

@@ -47,6 +47,9 @@ class FenrirConfig:
             default_temperature=_env_float(f"{prefix}DEFAULT_TEMPERATURE", 0.2),
             default_max_output_tokens=_env_int(f"{prefix}DEFAULT_MAX_OUTPUT_TOKENS", 220),
             openai_base_url=os.getenv(f"{prefix}OPENAI_BASE_URL", "https://api.openai.com/v1").strip(),
-            openai_api_key=os.getenv(f"{prefix}OPENAI_API_KEY", "").strip(),
+            openai_api_key=os.getenv(
+                f"{prefix}OPENAI_API_KEY",
+                os.getenv("OPENAI_API_KEY", ""),
+            ).strip(),
             openai_model=os.getenv(f"{prefix}OPENAI_MODEL", "gpt-4.1-mini").strip() or "gpt-4.1-mini",
         )

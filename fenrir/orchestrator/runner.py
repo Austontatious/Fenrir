@@ -31,6 +31,15 @@ class RunArtifacts:
     output_dir: Path
 
 
+@dataclass(frozen=True)
+class RunnerItem:
+    item_id: str
+    family: str
+    version: str
+    prompt: str
+    response_schema_ref: str = "batteries/frontier_alignment_v1/schemas/response.schema.json"
+
+
 class BatteryRunner:
     def __init__(self, *, battery_root: Path, store: RunStore) -> None:
         self._battery_root = battery_root
@@ -53,17 +62,54 @@ class BatteryRunner:
         production_wrapper_source: str | None = None,
     ) -> RunArtifacts:
         loaded = get_battery(self._battery_root, battery_id)
+        runner_items = [
+            RunnerItem(
+                item_id=item.item_id,
+                family=item.family,
+                version=item.version,
+                prompt=item.prompt,
+                response_schema_ref=item.response_schema_ref,
+            )
+            for item in loaded.items
+        ]
+        return self.run_items(
+            battery_id=loaded.spec.metadata.id,
+            battery_version=loaded.spec.metadata.version,
+            items=runner_items,
+            condition_id=condition_id,
+            model_target=model_target,
+            adapter=adapter,
+            sampling=sampling,
+            stopping=stopping,
+            production_wrapper_text=production_wrapper_text,
+            production_wrapper_source=production_wrapper_source,
+        )
+
+    def run_items(
+        self,
+        *,
+        battery_id: str,
+        battery_version: str,
+        items: list[RunnerItem],
+        condition_id: str,
+        model_target: str,
+        adapter: ModelAdapter,
+        sampling: SamplingConfig,
+        stopping: StoppingPolicy,
+        production_wrapper_text: str | None = None,
+        production_wrapper_source: str | None = None,
+    ) -> RunArtifacts:
         condition = get_condition(
             condition_id,
             production_wrapper_text=production_wrapper_text,
             production_wrapper_source=production_wrapper_source,
         )
-        selected = loaded.items[: stopping.max_items]
+        selected = items[: stopping.max_items]
 
         manifest = RunManifest(
             run_id=uuid4().hex,
-            battery_id=loaded.spec.metadata.id,
-            battery_version=loaded.spec.metadata.version,
+            battery_id=battery_id,
+            battery_version=battery_version,
             model_target=model_target,
             model_adapter=adapter.adapter_id,
             condition_id=condition.id,
@@ -108,7 +154,7 @@ class BatteryRunner:
                 error_state=adapter_response.error_state,
                 scoring_trace=scoring_trace,
                 provenance=ResponseProvenance(
-                    battery_version=loaded.spec.metadata.version,
+                    battery_version=battery_version,
                     item_version=item.version,
                     model_target=model_target,
                     model_adapter=adapter.adapter_id,
