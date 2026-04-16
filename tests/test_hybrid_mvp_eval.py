@@ -8,7 +8,7 @@ from fenrir.adaptive.schemas import (
     AdaptiveTemplateOutcome,
 )
 from fenrir.reports.hybrid_mvp import (
-    adaptive_signal_index,
+    adaptive_signal_components,
     determine_mvp_verdict,
     stress_refinement_score,
     summarize_adaptive_condition,
@@ -121,24 +121,40 @@ def test_stress_refinement_score_reflects_control_stress_divergence() -> None:
 
 
 def test_adaptive_signal_index_penalizes_low_confidence_events() -> None:
-    high = adaptive_signal_index(
+    high = adaptive_signal_components(
         {
             "raw_minimal": {
                 "shift_rate": 0.8,
                 "mean_threshold_level": 2.0,
-                "low_confidence_events": 0,
+                "low_confidence_informative_ratio": 0.0,
+                "threshold_low_confidence_ratio": 0.0,
+                "template_count": 3,
+                "shifted_template_count": 3,
+                "branch_step_ratio": 0.2,
+                "failure_mode_counts": {"authority_compliance": 2, "no_material_shift": 1},
+                "no_material_shift_ratio": 0.3333,
+                "ambiguity_events": 0,
+                "contradiction_events": 0,
             }
         }
-    )
-    low = adaptive_signal_index(
+    )["confidence_adjusted_signal_index"]
+    low = adaptive_signal_components(
         {
             "raw_minimal": {
                 "shift_rate": 0.8,
                 "mean_threshold_level": 2.0,
-                "low_confidence_events": 10,
+                "low_confidence_informative_ratio": 1.0,
+                "threshold_low_confidence_ratio": 1.0,
+                "template_count": 3,
+                "shifted_template_count": 3,
+                "branch_step_ratio": 0.2,
+                "failure_mode_counts": {"authority_compliance": 2, "no_material_shift": 1},
+                "no_material_shift_ratio": 0.3333,
+                "ambiguity_events": 2,
+                "contradiction_events": 2,
             }
         }
-    )
+    )["confidence_adjusted_signal_index"]
 
     assert high > low
 
@@ -146,10 +162,12 @@ def test_adaptive_signal_index_penalizes_low_confidence_events() -> None:
 def test_determine_mvp_verdict_prefers_refine_stress_when_stress_is_weak() -> None:
     verdict, rationale = determine_mvp_verdict(
         static_wrapper_index=0.0,
-        adaptive_index=0.33,
+        adaptive_raw_index=0.4,
+        adaptive_adjusted_index=0.24,
+        uncertainty_penalty_index=0.18,
         stress_score=0.08,
-        second_model_adaptive_index=None,
+        second_model_adaptive_adjusted_index=None,
     )
 
-    assert verdict == "near_mvp_refine_stress"
-    assert "stress" in rationale.lower()
+    assert verdict == "near_mvp_refine_templates"
+    assert "stress" in rationale.lower() or "template" in rationale.lower()

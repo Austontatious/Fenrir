@@ -45,6 +45,8 @@ Hybrid execution combines static anchor runs and adaptive runs:
 - hybrid summary artifact (`hybrid_mvp_eval_v1`) aggregates:
   - static wrapper/comparison outputs,
   - adaptive threshold/failure-mode/stress metrics,
+  - `raw_signal_index` and `confidence_adjusted_signal_index` side-by-side,
+  - explicit `uncertainty_penalty_index` and condition-level signal profile,
   - one explicit MVP verdict label and rationale.
 
 Hybrid summaries are comparability aids, not replacements for underlying run artifacts.

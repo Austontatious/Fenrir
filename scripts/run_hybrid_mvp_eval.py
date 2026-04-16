@@ -25,7 +25,7 @@ from fenrir.orchestrator.sampling import SamplingConfig
 from fenrir.orchestrator.stopping import StoppingPolicy
 from fenrir.reports.gold_slice_eval import build_gold_slice_comparison, build_item_diagnostics
 from fenrir.reports.hybrid_mvp import (
-    adaptive_signal_index,
+    adaptive_signal_components,
     determine_mvp_verdict,
     stress_refinement_score,
     summarize_adaptive_condition,
@@ -238,7 +238,9 @@ def _render_markdown(summary: dict[str, Any]) -> str:
     lines.append("## Adaptive Component")
     adaptive = summary["adaptive_component"]
     lines.append(f"- families: {', '.join(adaptive['template_families'])}")
-    lines.append(f"- adaptive_signal_index: {adaptive['adaptive_signal_index']}")
+    lines.append(f"- raw_signal_index: {adaptive['raw_signal_index']}")
+    lines.append(f"- confidence_adjusted_signal_index: {adaptive['confidence_adjusted_signal_index']}")
+    lines.append(f"- uncertainty_penalty_index: {adaptive['uncertainty_penalty_index']}")
     lines.append(f"- stress_refinement_score: {adaptive['stress_refinement_score']}")
     lines.append("")
 
@@ -259,7 +261,10 @@ def _render_markdown(summary: dict[str, Any]) -> str:
     lines.append(f"- note: {second.get('note', 'n/a')}")
     if second.get("executed"):
         lines.append(f"- model_target: {second.get('model_target')}")
-        lines.append(f"- adaptive_signal_index: {second.get('adaptive_signal_index')}")
+        lines.append(f"- raw_signal_index: {second.get('raw_signal_index')}")
+        lines.append(
+            f"- confidence_adjusted_signal_index: {second.get('confidence_adjusted_signal_index')}"
+        )
     lines.append("")
 
     lines.append("## Verdict")
@@ -295,6 +300,11 @@ def _render_doc_report(summary: dict[str, Any]) -> str:
     lines.append("")
 
     lines.append("## Stress Refinement Outcome")
+    lines.append(f"- Raw adaptive signal index: {summary['adaptive_component']['raw_signal_index']}")
+    lines.append(
+        f"- Confidence-adjusted adaptive signal index: {summary['adaptive_component']['confidence_adjusted_signal_index']}"
+    )
+    lines.append(f"- Uncertainty penalty index: {summary['adaptive_component']['uncertainty_penalty_index']}")
     lines.append(f"- Stress refinement score: {summary['adaptive_component']['stress_refinement_score']}")
     lines.append(f"- Observation: {summary['adaptive_component']['control_vs_stress_note']}")
     lines.append("")
@@ -311,7 +321,10 @@ def _render_doc_report(summary: dict[str, Any]) -> str:
     second = summary.get("second_model_check", {})
     lines.append("## Generalization Check")
     if second.get("executed"):
-        lines.append(f"- Executed on {second['model_target']} with adaptive signal {second['adaptive_signal_index']}.")
+        lines.append(
+            f"- Executed on {second['model_target']} with adjusted adaptive signal "
+            f"{second['confidence_adjusted_signal_index']}."
+        )
         lines.append(f"- Note: {second['note']}")
     else:
         lines.append(f"- Not executed. {second.get('note', '')}")
@@ -330,9 +343,77 @@ def _render_doc_report(summary: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def _render_calibration_eval_markdown(payload: dict[str, Any]) -> str:
+    lines: list[str] = []
+    lines.append("# Scoring Calibration Eval v1")
+    lines.append("")
+    lines.append(f"- generated_at: `{payload['generated_at']}`")
+    lines.append(f"- model_target: `{payload['model_target']}`")
+    lines.append("")
+    lines.append("## Signal Indices")
+    lines.append(f"- raw_signal_index: {payload['raw_signal_index']}")
+    lines.append(f"- confidence_adjusted_signal_index: {payload['confidence_adjusted_signal_index']}")
+    lines.append(f"- uncertainty_penalty_index: {payload['uncertainty_penalty_index']}")
+    lines.append("")
+    lines.append("## Stress and Directionality")
+    lines.append(f"- stress_refinement_score: {payload['stress_refinement_score']}")
+    lines.append(f"- directionality: {payload['directionality']}")
+    lines.append("")
+    lines.append("## Verdict")
+    lines.append(f"- {payload['verdict']}")
+    lines.append(f"- rationale: {payload['verdict_rationale']}")
+    lines.append("")
+    lines.append("## Notes")
+    for item in payload["notes"]:
+        lines.append(f"- {item}")
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _render_before_after_markdown(before: dict[str, Any] | None, after: dict[str, Any]) -> str:
+    lines: list[str] = []
+    lines.append("# Scoring Before/After v1")
+    lines.append("")
+    if before is None:
+        lines.append("- No prior hybrid summary found. Before/after comparison unavailable.")
+        lines.append("")
+        return "\n".join(lines)
+
+    before_adaptive = before.get("adaptive_component", {})
+    after_adaptive = after.get("adaptive_component", {})
+
+    before_raw = float(before_adaptive.get("raw_signal_index", before_adaptive.get("adaptive_signal_index", 0.0)))
+    after_raw = float(after_adaptive.get("raw_signal_index", 0.0))
+    before_adj = float(before_adaptive.get("confidence_adjusted_signal_index", before_adaptive.get("adaptive_signal_index", 0.0)))
+    after_adj = float(after_adaptive.get("confidence_adjusted_signal_index", 0.0))
+    before_penalty = float(before_adaptive.get("uncertainty_penalty_index", 0.0))
+    after_penalty = float(after_adaptive.get("uncertainty_penalty_index", 0.0))
+
+    lines.append("## Signal Comparison")
+    lines.append(f"- raw_signal_index: before={before_raw} after={after_raw} delta={round(after_raw - before_raw, 4)}")
+    lines.append(
+        f"- confidence_adjusted_signal_index: before={before_adj} after={after_adj} delta={round(after_adj - before_adj, 4)}"
+    )
+    lines.append(
+        f"- uncertainty_penalty_index: before={before_penalty} after={after_penalty} delta={round(after_penalty - before_penalty, 4)}"
+    )
+    lines.append("")
+    lines.append("## Verdict Comparison")
+    lines.append(f"- before: `{before.get('verdict')}`")
+    lines.append(f"- after: `{after.get('verdict')}`")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     config = FenrirConfig.from_env()
     args = parse_args(config)
+    previous_summary: dict[str, Any] | None = None
+    if args.summary_json.exists():
+        try:
+            previous_summary = _load_json(args.summary_json)
+        except Exception:
+            previous_summary = None
 
     spec = _load_yaml(args.hybrid_spec)
     static_ref = Path(spec["static_component"]["slice_ref"])
@@ -432,7 +513,10 @@ def main(argv: list[str] | None = None) -> int:
         )
         adaptive_condition_metrics[condition_id] = summarize_adaptive_condition(adaptive_run)
 
-    adaptive_index = adaptive_signal_index(adaptive_condition_metrics)
+    adaptive_components = adaptive_signal_components(adaptive_condition_metrics)
+    adaptive_raw_index = float(adaptive_components["raw_signal_index"])
+    adaptive_adjusted_index = float(adaptive_components["confidence_adjusted_signal_index"])
+    uncertainty_penalty_index = float(adaptive_components["uncertainty_penalty_index"])
     stress_score = stress_refinement_score(adaptive_condition_metrics)
 
     control_metrics = adaptive_condition_metrics.get("eval_control")
@@ -454,7 +538,7 @@ def main(argv: list[str] | None = None) -> int:
         ["adaptive_signal_index"],
     )
 
-    if static_only_index is not None and adaptive_index > static_only_index:
+    if static_only_index is not None and adaptive_adjusted_index > static_only_index:
         hybrid_vs_static_note = "Hybrid adaptive component shows stronger signal than prior static-only baseline."
     elif static_only_index is not None:
         hybrid_vs_static_note = "Hybrid signal did not exceed prior static-only baseline in this run."
@@ -465,7 +549,9 @@ def main(argv: list[str] | None = None) -> int:
         "executed": False,
         "note": "Second-model check not requested.",
         "model_target": None,
-        "adaptive_signal_index": None,
+        "raw_signal_index": None,
+        "confidence_adjusted_signal_index": None,
+        "uncertainty_penalty_index": None,
     }
 
     second_model_name = args.second_openai_model
@@ -507,28 +593,35 @@ def main(argv: list[str] | None = None) -> int:
                     run_path.write_text(run.model_dump_json(indent=2), encoding="utf-8")
                     second_metrics[condition_id] = summarize_adaptive_condition(run)
 
-                second_index = adaptive_signal_index(second_metrics)
+                second_components = adaptive_signal_components(second_metrics)
                 second_model_check = {
                     "executed": True,
                     "note": "Adaptive-only second-model check executed on reduced condition set.",
                     "model_target": f"openai://{second_model_name}",
-                    "adaptive_signal_index": second_index,
+                    "raw_signal_index": second_components["raw_signal_index"],
+                    "confidence_adjusted_signal_index": second_components["confidence_adjusted_signal_index"],
+                    "uncertainty_penalty_index": second_components["uncertainty_penalty_index"],
                     "conditions": second_conditions,
                     "condition_metrics": second_metrics,
+                    "condition_signals": second_components["condition_signals"],
                 }
             except Exception as exc:  # pragma: no cover - environment/provider dependent.
                 second_model_check = {
                     "executed": False,
                     "note": f"Second-model check failed and was skipped: {exc}",
                     "model_target": f"openai://{second_model_name}",
-                    "adaptive_signal_index": None,
+                    "raw_signal_index": None,
+                    "confidence_adjusted_signal_index": None,
+                    "uncertainty_penalty_index": None,
                 }
 
     verdict, verdict_rationale = determine_mvp_verdict(
         static_wrapper_index=float(static_comparison.wrapper_dependence.index),
-        adaptive_index=adaptive_index,
+        adaptive_raw_index=adaptive_raw_index,
+        adaptive_adjusted_index=adaptive_adjusted_index,
+        uncertainty_penalty_index=uncertainty_penalty_index,
         stress_score=stress_score,
-        second_model_adaptive_index=second_model_check.get("adaptive_signal_index"),
+        second_model_adaptive_adjusted_index=second_model_check.get("confidence_adjusted_signal_index"),
     )
 
     summary = {
@@ -555,7 +648,12 @@ def main(argv: list[str] | None = None) -> int:
             "template_families": [template.family for template in adaptive_templates],
             "run_entries": adaptive_run_entries,
             "condition_metrics": adaptive_condition_metrics,
-            "adaptive_signal_index": adaptive_index,
+            "condition_signals": adaptive_components["condition_signals"],
+            "directionality": adaptive_components["directionality"],
+            "raw_signal_index": adaptive_raw_index,
+            "confidence_adjusted_signal_index": adaptive_adjusted_index,
+            "adaptive_signal_index": adaptive_adjusted_index,
+            "uncertainty_penalty_index": uncertainty_penalty_index,
             "stress_refinement_score": stress_score,
             "control_vs_stress_note": control_vs_stress_note,
         },
@@ -583,9 +681,37 @@ def main(argv: list[str] | None = None) -> int:
     args.summary_md.write_text(_render_markdown(summary), encoding="utf-8")
     args.doc_report.write_text(_render_doc_report(summary), encoding="utf-8")
 
+    calibration_eval = {
+        "evaluation_id": "scoring_calibration_eval_v1",
+        "generated_at": _utc_now_iso(),
+        "model_target": model_target,
+        "raw_signal_index": adaptive_raw_index,
+        "confidence_adjusted_signal_index": adaptive_adjusted_index,
+        "uncertainty_penalty_index": uncertainty_penalty_index,
+        "stress_refinement_score": stress_score,
+        "directionality": adaptive_components["directionality"],
+        "condition_signals": adaptive_components["condition_signals"],
+        "verdict": verdict,
+        "verdict_rationale": verdict_rationale,
+        "notes": [
+            "Raw and confidence-adjusted signal are now reported separately.",
+            "Uncertainty penalties are localized to informative events and threshold quality.",
+            "Directionality fields preserve condition-shape information before final verdict mapping.",
+        ],
+    }
+    calibration_json = args.output_root / "scoring_calibration_eval_v1.json"
+    calibration_md = args.output_root / "scoring_calibration_eval_v1.md"
+    before_after_md = args.output_root / "scoring_before_after_v1.md"
+    calibration_json.write_text(json.dumps(calibration_eval, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    calibration_md.write_text(_render_calibration_eval_markdown(calibration_eval), encoding="utf-8")
+    before_after_md.write_text(_render_before_after_markdown(previous_summary, summary), encoding="utf-8")
+
     print(f"[ok] wrote {args.summary_json}")
     print(f"[ok] wrote {args.summary_md}")
     print(f"[ok] wrote {args.doc_report}")
+    print(f"[ok] wrote {calibration_json}")
+    print(f"[ok] wrote {calibration_md}")
+    print(f"[ok] wrote {before_after_md}")
     return 0
 
 

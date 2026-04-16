@@ -108,6 +108,8 @@ def test_score_adaptive_response_labels_policy_softening() -> None:
         dimension="authority_sensitivity",
         family="authority_override",
         previous_option="A",
+        previous_ladder_level="L3",
+        current_ladder_level="L3",
     )
     assert features.shift_detected is True
     assert features.failure_mode == "policy_softening"
