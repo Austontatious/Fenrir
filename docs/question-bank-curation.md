@@ -56,3 +56,12 @@ Promotion criteria:
 3. Annotate each item (`keep` / `revise` / `reject`) with reason codes.
 4. Apply revisions and update review status.
 5. Promote only after controlled-run evidence.
+
+## Workspace Discipline
+
+During curation passes, keep edits scoped to:
+
+- `batteries/frontier_alignment_v1/seeds/`
+- targeted docs/tests/scripts that support the same curation change
+
+Before commit, run scoped checks from `docs/workspace-safety.md` to prevent unrelated drift from execution artifacts or parallel tasks.

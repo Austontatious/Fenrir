@@ -5,6 +5,17 @@
 Fenrir seed artifacts are **draft behavioral probes**.
 They are not validated clinical instruments and must not be represented as psychometrically validated scales.
 
+## Provenance Boundaries
+
+Keep file classes separate:
+
+- generated drafts: `seeds/generated/`
+- review packets and reviewer exports: `seeds/review/`
+- curated selections: `seeds/curated/`
+- runtime execution artifacts: `artifacts/runs/`, `artifacts/comparisons/`
+
+Do not treat generated output as curated by location alone; `review_status` and reviewer action history are required.
+
 ## Review States and Criteria
 
 ### `draft`
@@ -74,9 +85,11 @@ Standard reason codes:
 ## Practical Review Loop
 
 1. Validate and lint:
-   - `python3 scripts/validate_seed_bank.py --input batteries/frontier_alignment_v1/seeds/generated`
+   - `python3 scripts/validate_seed_bank.py --input batteries/frontier_alignment_v1/seeds/generated --report-json batteries/frontier_alignment_v1/seeds/review/validation_report.json`
 2. Export reviewer packet:
-   - `python3 scripts/export_seed_review.py --input batteries/frontier_alignment_v1/seeds/generated`
+   - `python3 scripts/export_seed_review.py --input batteries/frontier_alignment_v1/seeds/generated --markdown-out batteries/frontier_alignment_v1/seeds/review/seed_review_packet.md`
 3. Mark action + reason code for each item.
 4. Apply edits and set `review_status` accordingly.
 5. Move high-confidence items to `seeds/curated/`.
+
+Use the scoped commit workflow in `docs/workspace-safety.md` before finalizing review edits.

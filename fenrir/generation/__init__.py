@@ -6,6 +6,7 @@ from fenrir.generation.openai_seed_generator import (
     SeedGenerationRequest,
     SeedGenerationResult,
 )
+from fenrir.generation.paths import SeedSurfacePaths, ensure_within_allowed_roots, seed_surface_paths
 from fenrir.generation.prompt_templates import PROMPT_VERSION
 from fenrir.generation.review_states import (
     REASON_CODES,
@@ -42,6 +43,7 @@ __all__ = [
     "REASON_CODES",
     "REVIEW_ACTIONS",
     "REVIEW_STATES",
+    "SeedSurfacePaths",
     "STATE_CRITERIA",
     "SUPPORTED_FAMILIES",
     "SchemaValidationError",
@@ -49,6 +51,7 @@ __all__ = [
     "SeedGenerationResult",
     "TRANSITIONS",
     "dedupe_items",
+    "ensure_within_allowed_roots",
     "is_valid_state",
     "is_valid_transition",
     "load_coverage_ids",
@@ -61,6 +64,7 @@ __all__ = [
     "require_valid_batch",
     "require_valid_item",
     "run_lint_checks",
+    "seed_surface_paths",
     "summarize_state_counts",
     "validate_transition",
 ]

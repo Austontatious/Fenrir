@@ -14,6 +14,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from fenrir.generation import DEFAULT_BATTERY_ID
+from fenrir.generation.paths import ensure_within_allowed_roots, seed_surface_paths
 from fenrir.generation.review_export import (
     write_csv_export,
     write_jsonl_export,
@@ -21,8 +22,9 @@ from fenrir.generation.review_export import (
 )
 
 
-DEFAULT_GENERATED_DIR = REPO_ROOT / "batteries" / DEFAULT_BATTERY_ID / "seeds" / "generated"
-DEFAULT_REVIEW_DIR = REPO_ROOT / "batteries" / DEFAULT_BATTERY_ID / "seeds" / "review"
+DEFAULT_SURFACE = seed_surface_paths(battery_id=DEFAULT_BATTERY_ID)
+DEFAULT_GENERATED_DIR = DEFAULT_SURFACE.generated_root
+DEFAULT_REVIEW_DIR = DEFAULT_SURFACE.review_root
 
 
 def parse_args() -> argparse.Namespace:
@@ -36,6 +38,21 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--csv-out", type=Path, default=None)
     parser.add_argument("--jsonl-out", type=Path, default=None)
     parser.add_argument("--title", default="Fenrir Seed Review Packet")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate inputs and print destination paths without writing outputs.",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Allow overwriting existing export files.",
+    )
+    parser.add_argument(
+        "--allow-external-output",
+        action="store_true",
+        help="Allow output paths outside batteries/<battery>/seeds/review.",
+    )
     return parser.parse_args()
 
 
@@ -66,9 +83,50 @@ def _extract_items(payload: Any) -> list[dict[str, Any]]:
 
 def main() -> None:
     args = parse_args()
-    files = _discover_json_files(args.input)
+    surface = seed_surface_paths(battery_id=DEFAULT_BATTERY_ID)
+    input_path = args.input.resolve()
+    markdown_out = args.markdown_out.resolve()
+    csv_out = args.csv_out.resolve() if args.csv_out is not None else None
+    jsonl_out = args.jsonl_out.resolve() if args.jsonl_out is not None else None
+
+    if not args.allow_external_output:
+        input_path = ensure_within_allowed_roots(
+            input_path,
+            allowed_roots=[surface.generated_root, surface.curated_root],
+            label="input",
+        )
+        markdown_out = ensure_within_allowed_roots(
+            markdown_out,
+            allowed_roots=[surface.review_root],
+            label="markdown output",
+        )
+        if csv_out is not None:
+            csv_out = ensure_within_allowed_roots(
+                csv_out,
+                allowed_roots=[surface.review_root],
+                label="csv output",
+            )
+        if jsonl_out is not None:
+            jsonl_out = ensure_within_allowed_roots(
+                jsonl_out,
+                allowed_roots=[surface.review_root],
+                label="jsonl output",
+            )
+
+    for target in [markdown_out, csv_out, jsonl_out]:
+        if target is not None and target.exists() and not args.overwrite:
+            raise SystemExit(f"Refusing to overwrite existing file without --overwrite: {target}")
+
+    print(f"[info] input={input_path}")
+    print(f"[info] markdown_out={markdown_out}")
+    if csv_out is not None:
+        print(f"[info] csv_out={csv_out}")
+    if jsonl_out is not None:
+        print(f"[info] jsonl_out={jsonl_out}")
+
+    files = _discover_json_files(input_path)
     if not files:
-        raise SystemExit(f"No JSON seed files found at {args.input}")
+        raise SystemExit(f"No JSON seed files found at {input_path}")
 
     items: list[dict[str, Any]] = []
     for path in files:
@@ -77,16 +135,21 @@ def main() -> None:
     if not items:
         raise SystemExit("No seed items found in the supplied input files")
 
-    write_markdown_review_packet(items=items, output_path=args.markdown_out, title=args.title)
-    print(f"[ok] markdown review packet: {args.markdown_out}")
+    if args.dry_run:
+        print(f"[dry-run] would export {len(items)} seed items")
+        print("[dry-run] no files written")
+        return
 
-    if args.csv_out is not None:
-        write_csv_export(items=items, output_path=args.csv_out)
-        print(f"[ok] csv export: {args.csv_out}")
+    write_markdown_review_packet(items=items, output_path=markdown_out, title=args.title)
+    print(f"[ok] markdown review packet: {markdown_out}")
 
-    if args.jsonl_out is not None:
-        write_jsonl_export(items=items, output_path=args.jsonl_out)
-        print(f"[ok] jsonl export: {args.jsonl_out}")
+    if csv_out is not None:
+        write_csv_export(items=items, output_path=csv_out)
+        print(f"[ok] csv export: {csv_out}")
+
+    if jsonl_out is not None:
+        write_jsonl_export(items=items, output_path=jsonl_out)
+        print(f"[ok] jsonl export: {jsonl_out}")
 
 
 if __name__ == "__main__":

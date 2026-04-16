@@ -38,6 +38,17 @@ Current default prompt version is `seedgen_v2`.
   - schemas under `schemas/`
   - taxonomy metadata under `metadata/`
   - generated/curated seeds under `seeds/`
+- workspace safety workflow: `docs/workspace-safety.md`
+
+## Canonical Output Classes
+
+- generated draft batches: `batteries/frontier_alignment_v1/seeds/generated/`
+- raw generation request/response artifacts: `batteries/frontier_alignment_v1/seeds/generated/raw/`
+- review packet exports: `batteries/frontier_alignment_v1/seeds/review/`
+- curated seed sets: `batteries/frontier_alignment_v1/seeds/curated/`
+- runtime execution artifacts (non-seed content): `artifacts/runs/` and `artifacts/comparisons/`
+
+Seed scripts are hardened to default to these locations and avoid out-of-surface writes unless explicitly allowed.
 
 ## Generate
 
@@ -53,6 +64,7 @@ python3 scripts/generate_seed_bank.py \
 
 Configuration defaults are loaded from `FenrirConfig` (`FENRIR_*` env surface).
 Raw request/response artifacts are written under `seeds/generated/raw/<timestamp>/...`.
+Use `--dry-run` to print planned outputs without writing and `--overwrite` for explicit replacement.
 
 If API access is unavailable, fixture fallback is supported:
 
@@ -60,14 +72,16 @@ If API access is unavailable, fixture fallback is supported:
 python3 scripts/generate_seed_bank.py \
   --family trait_forced_choice \
   --count 2 \
-  --allow-fixture-fallback
+  --allow-fixture-fallback \
+  --dry-run
 ```
 
 ## Validate
 
 ```bash
 python3 scripts/validate_seed_bank.py \
-  --input batteries/frontier_alignment_v1/seeds/generated
+  --input batteries/frontier_alignment_v1/seeds/generated \
+  --report-json batteries/frontier_alignment_v1/seeds/review/validation_report.json
 ```
 
 Validation includes schema checks plus lint heuristics for:
@@ -87,7 +101,8 @@ Validation includes schema checks plus lint heuristics for:
 python3 scripts/export_seed_review.py \
   --input batteries/frontier_alignment_v1/seeds/generated \
   --markdown-out batteries/frontier_alignment_v1/seeds/review/seed_review_packet.md \
-  --csv-out batteries/frontier_alignment_v1/seeds/review/seed_review_packet.csv
+  --csv-out batteries/frontier_alignment_v1/seeds/review/seed_review_packet.csv \
+  --dry-run
 ```
 
 Review packets are grouped by family then dimension/coverage and include:

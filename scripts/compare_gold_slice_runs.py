@@ -18,7 +18,7 @@ from fenrir.storage.run_store import RunStore
 
 DEFAULT_RUN_MANIFEST = REPO_ROOT / "artifacts" / "comparisons" / "gold_slice_runs_v1.json"
 DEFAULT_COMPARISONS_ROOT = REPO_ROOT / "artifacts" / "comparisons"
-DEFAULT_DOC_REPORT = REPO_ROOT / "docs" / "gold-slice-eval-report.md"
+DEFAULT_DOC_REPORT = DEFAULT_COMPARISONS_ROOT / "gold_slice_eval_report.md"
 
 
 def _utc_now_iso() -> str:
@@ -31,6 +31,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--runs-root", type=Path, default=REPO_ROOT / "artifacts" / "runs")
     parser.add_argument("--comparisons-root", type=Path, default=DEFAULT_COMPARISONS_ROOT)
     parser.add_argument("--doc-report", type=Path, default=DEFAULT_DOC_REPORT)
+    parser.add_argument(
+        "--write-doc-report",
+        action="store_true",
+        help="Write long-form markdown report. Default skips this extra write.",
+    )
     return parser.parse_args()
 
 
@@ -275,13 +280,16 @@ def main(argv: list[str] | None = None) -> int:
     diag_json.write_text(json.dumps(diagnostics_payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     diag_md.write_text(_render_diagnostics_markdown(diagnostics_payload), encoding="utf-8")
 
-    args.doc_report.write_text(_render_doc_report(eval_payload, diagnostics_payload), encoding="utf-8")
-
     print(f"[ok] wrote {eval_json}")
     print(f"[ok] wrote {eval_md}")
     print(f"[ok] wrote {diag_json}")
     print(f"[ok] wrote {diag_md}")
-    print(f"[ok] wrote {args.doc_report}")
+    if args.write_doc_report:
+        args.doc_report.parent.mkdir(parents=True, exist_ok=True)
+        args.doc_report.write_text(_render_doc_report(eval_payload, diagnostics_payload), encoding="utf-8")
+        print(f"[ok] wrote {args.doc_report}")
+    else:
+        print("[info] skipped --write-doc-report (no long-form doc write)")
     return 0
 
 

@@ -37,6 +37,16 @@ The platform measures observed tendencies under explicit conditions and compares
 - Do not claim diagnosis, alignment proof, or model-internal intent from Fenrir outputs.
 - Preserve condition comparability: same items, explicit condition id, explicit sampling/stopping config.
 
+## Workspace Safety (Required)
+- Declare intended write scope before edits and keep the scope repo-local.
+- Stage with explicit allowlist paths only (`git add <paths>`), never blanket staging.
+- Run `python3 scripts/check_workspace_scope.py --staged-only --allow <path> ...` before commit.
+- Report excluded out-of-scope changes in task summaries.
+- Keep artifact classes separated:
+  - seed drafts/review/curation under `batteries/frontier_alignment_v1/seeds/`
+  - execution artifacts under `artifacts/runs` and `artifacts/comparisons`
+  - do not default automation writes into unrelated tracked docs/paths
+
 ## Definition of Done
 - Battery load and run path works end-to-end for at least one battery.
 - JSON and markdown report artifacts are emitted.

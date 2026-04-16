@@ -24,19 +24,15 @@ from fenrir.generation import (
     OpenAISeedGenerator,
     SeedGenerationRequest,
     dedupe_items,
+    ensure_within_allowed_roots,
     load_coverage_ids,
     load_dimension_ids,
     load_pressure_ids,
     load_seed_batch_schema,
+    seed_surface_paths,
     load_sensitivity_ids,
     require_valid_batch,
 )
-
-
-DEFAULT_OUTPUT_DIR = REPO_ROOT / "batteries" / DEFAULT_BATTERY_ID / "seeds" / "generated"
-DEFAULT_METADATA_DIR = REPO_ROOT / "batteries" / DEFAULT_BATTERY_ID / "metadata"
-DEFAULT_SCHEMA_DIR = REPO_ROOT / "batteries" / DEFAULT_BATTERY_ID / "schemas"
-DEFAULT_FIXTURE_PATH = DEFAULT_OUTPUT_DIR / "sample_seed_batch.json"
 
 
 def _utc_timestamp() -> str:
@@ -45,13 +41,13 @@ def _utc_timestamp() -> str:
 
 def _as_output_path(path: Path, *, timestamp: str) -> Path:
     if path.suffix.lower() == ".json":
-        path.parent.mkdir(parents=True, exist_ok=True)
         return path
-    path.mkdir(parents=True, exist_ok=True)
     return path / f"seed_batch_{timestamp}.json"
 
 
-def _write_json(path: Path, payload: Any) -> None:
+def _write_json(path: Path, payload: Any, *, overwrite: bool) -> None:
+    if path.exists() and not overwrite:
+        raise FileExistsError(f"Refusing to overwrite existing file without --overwrite: {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
@@ -79,10 +75,10 @@ def parse_args(config: FenrirConfig) -> argparse.Namespace:
     parser.add_argument("--model", default=config.openai_model)
     parser.add_argument("--base-url", default=config.openai_base_url)
     parser.add_argument("--api-key", default=None)
-    parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_DIR)
+    parser.add_argument("--output", type=Path, default=None)
     parser.add_argument("--artifact-dir", type=Path, default=None)
-    parser.add_argument("--schema-dir", type=Path, default=DEFAULT_SCHEMA_DIR)
-    parser.add_argument("--metadata-dir", type=Path, default=DEFAULT_METADATA_DIR)
+    parser.add_argument("--schema-dir", type=Path, default=None)
+    parser.add_argument("--metadata-dir", type=Path, default=None)
     parser.add_argument("--prompt-version", default=PROMPT_VERSION)
     parser.add_argument(
         "--temperature",
@@ -100,7 +96,22 @@ def parse_args(config: FenrirConfig) -> argparse.Namespace:
         action="store_true",
         help="Use sample fixture when API key is missing.",
     )
-    parser.add_argument("--fixture-path", type=Path, default=DEFAULT_FIXTURE_PATH)
+    parser.add_argument("--fixture-path", type=Path, default=None)
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print planned output locations and generation plan without writing files or calling model APIs.",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Allow writing to output paths that already exist.",
+    )
+    parser.add_argument(
+        "--allow-external-output",
+        action="store_true",
+        help="Allow output/artifact paths outside the canonical batteries/<battery>/seeds surface.",
+    )
     return parser.parse_args()
 
 
@@ -111,29 +122,76 @@ def main() -> None:
     if args.count <= 0:
         raise SystemExit("--count must be positive")
 
-    seed_batch_schema = load_seed_batch_schema(args.schema_dir)
     timestamp = _utc_timestamp()
+    surface = seed_surface_paths(battery_id=args.battery_id)
 
-    output_path = _as_output_path(args.output, timestamp=timestamp)
-    artifact_dir = args.artifact_dir
-    if artifact_dir is None:
-        artifact_dir = output_path.parent / "raw" / timestamp
+    output_arg = args.output or surface.generated_root
+    output_path = _as_output_path(output_arg.resolve(), timestamp=timestamp)
+    artifact_dir = (args.artifact_dir or (surface.generated_raw_root / timestamp)).resolve()
+    schema_dir = (args.schema_dir or surface.schemas_root).resolve()
+    metadata_dir = (args.metadata_dir or surface.metadata_root).resolve()
+    fixture_path = (args.fixture_path or (surface.generated_root / "sample_seed_batch.json")).resolve()
+
+    if not args.allow_external_output:
+        output_path = ensure_within_allowed_roots(
+            output_path,
+            allowed_roots=[surface.generated_root],
+            label="output",
+        )
+        artifact_dir = ensure_within_allowed_roots(
+            artifact_dir,
+            allowed_roots=[surface.generated_raw_root],
+            label="artifact",
+        )
+        schema_dir = ensure_within_allowed_roots(
+            schema_dir,
+            allowed_roots=[surface.schemas_root],
+            label="schema",
+        )
+        metadata_dir = ensure_within_allowed_roots(
+            metadata_dir,
+            allowed_roots=[surface.metadata_root],
+            label="metadata",
+        )
+    else:
+        output_path = output_path.resolve()
+        artifact_dir = artifact_dir.resolve()
+
+    seed_batch_schema = load_seed_batch_schema(schema_dir)
+
+    if output_path.exists() and not args.overwrite:
+        raise SystemExit(f"Refusing to overwrite existing output without --overwrite: {output_path}")
+    if artifact_dir.exists() and any(artifact_dir.iterdir()) and not args.overwrite:
+        raise SystemExit(
+            f"Refusing to write into non-empty artifact dir without --overwrite: {artifact_dir}"
+        )
+
+    print(f"[info] battery_id={args.battery_id}")
+    print(f"[info] output_path={output_path}")
+    print(f"[info] artifact_dir={artifact_dir}")
+    print(f"[info] schema_dir={schema_dir}")
+    print(f"[info] metadata_dir={metadata_dir}")
+
+    if args.dry_run:
+        print(f"[dry-run] would generate families={args.family} count_per_family={args.count}")
+        print("[dry-run] no API calls and no file writes were performed")
+        return
 
     api_key = args.api_key if args.api_key is not None else config.openai_api_key
 
     if not api_key:
         if not args.allow_fixture_fallback:
             raise SystemExit("Missing API key. Set FENRIR_OPENAI_API_KEY or pass --api-key.")
-        fixture = _load_fixture_batch(args.fixture_path)
+        fixture = _load_fixture_batch(fixture_path)
         require_valid_batch(fixture, seed_batch_schema)
-        _write_json(output_path, fixture)
+        _write_json(output_path, fixture, overwrite=args.overwrite)
         print(f"[ok] API key missing; wrote fixture batch to {output_path}")
         return
 
-    dimension_ids = load_dimension_ids(args.metadata_dir)
-    coverage_ids = load_coverage_ids(args.metadata_dir)
-    pressure_ids = load_pressure_ids(args.metadata_dir)
-    sensitivity_ids = load_sensitivity_ids(args.metadata_dir)
+    dimension_ids = load_dimension_ids(metadata_dir)
+    coverage_ids = load_coverage_ids(metadata_dir)
+    pressure_ids = load_pressure_ids(metadata_dir)
+    sensitivity_ids = load_sensitivity_ids(metadata_dir)
 
     adapter = OpenAICompatibleAdapter(
         base_url=args.base_url,
@@ -172,8 +230,8 @@ def main() -> None:
         all_items.extend(result.batch.get("items", []))
 
         family_dir = artifact_dir / family
-        _write_json(family_dir / "request.json", result.request_payload)
-        _write_json(family_dir / "response.json", result.response_payload)
+        _write_json(family_dir / "request.json", result.request_payload, overwrite=args.overwrite)
+        _write_json(family_dir / "response.json", result.response_payload, overwrite=args.overwrite)
         (family_dir / "raw_output_text.txt").write_text(result.raw_text, encoding="utf-8")
         _write_json(
             family_dir / "prompt_meta.json",
@@ -182,6 +240,7 @@ def main() -> None:
                 "prompt_sha256": result.prompt_sha256,
                 "prompt_version": result.prompt_version,
             },
+            overwrite=args.overwrite,
         )
         print(f"[info] generated {len(result.batch.get('items', []))} {family} items")
 
@@ -203,7 +262,7 @@ def main() -> None:
     }
     require_valid_batch(final_batch, seed_batch_schema)
 
-    _write_json(output_path, final_batch)
+    _write_json(output_path, final_batch, overwrite=args.overwrite)
     if dedupe_issues:
         _write_json(
             artifact_dir / "dedupe_report.json",
@@ -211,6 +270,7 @@ def main() -> None:
                 "dropped_count": len(dedupe_issues),
                 "issues": [issue.__dict__ for issue in dedupe_issues],
             },
+            overwrite=args.overwrite,
         )
 
     print(f"[ok] wrote {len(final_items)} items to {output_path}")

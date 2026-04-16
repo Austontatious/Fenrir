@@ -44,6 +44,15 @@ Fenrir is split into five layers:
 - OpenAI-compatible adapter is present as a thin transport placeholder.
 - Run artifacts are frozen under v1 manifest/response/report contracts with condition provenance and scoring trace capture.
 
+## Seed Pipeline Surfaces
+
+- draft generation: `batteries/frontier_alignment_v1/seeds/generated/`
+- review exports: `batteries/frontier_alignment_v1/seeds/review/`
+- curated sets: `batteries/frontier_alignment_v1/seeds/curated/`
+- execution artifacts: `artifacts/runs/`, `artifacts/comparisons/`
+
+Workspace safety workflow: `docs/workspace-safety.md`.
+
 ## Safe-Claims Policy
 
 Fenrir reports observed behavior under explicit test conditions.

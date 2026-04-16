@@ -16,26 +16,23 @@ if str(REPO_ROOT) not in sys.path:
 from fenrir.generation import (
     DEFAULT_BATTERY_ID,
     REVIEW_STATES,
+    ensure_within_allowed_roots,
     load_coverage_ids,
     load_dimension_ids,
     load_pressure_ids,
     load_seed_batch_schema,
     load_seed_item_schema,
+    seed_surface_paths,
 )
 from fenrir.generation.dedupe import run_lint_checks
 from fenrir.generation.schemas import validate_batch, validate_item
 
-
-DEFAULT_GENERATED_DIR = REPO_ROOT / "batteries" / DEFAULT_BATTERY_ID / "seeds" / "generated"
-DEFAULT_METADATA_DIR = REPO_ROOT / "batteries" / DEFAULT_BATTERY_ID / "metadata"
-DEFAULT_SCHEMA_DIR = REPO_ROOT / "batteries" / DEFAULT_BATTERY_ID / "schemas"
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Validate Fenrir seed bank artifacts")
-    parser.add_argument("--input", type=Path, default=DEFAULT_GENERATED_DIR)
-    parser.add_argument("--schema-dir", type=Path, default=DEFAULT_SCHEMA_DIR)
-    parser.add_argument("--metadata-dir", type=Path, default=DEFAULT_METADATA_DIR)
+    parser.add_argument("--battery-id", default=DEFAULT_BATTERY_ID)
+    parser.add_argument("--input", type=Path, default=None)
+    parser.add_argument("--schema-dir", type=Path, default=None)
+    parser.add_argument("--metadata-dir", type=Path, default=None)
     parser.add_argument("--report-json", type=Path, default=None)
     parser.add_argument("--fail-on-warnings", action="store_true")
     parser.add_argument("--near-duplicate-threshold", type=float, default=0.88)
@@ -47,6 +44,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--repeated-opening-threshold", type=int, default=3)
     parser.add_argument("--moralized-token-threshold", type=int, default=8)
     parser.add_argument("--variant-group-overuse-threshold", type=int, default=3)
+    parser.add_argument(
+        "--allow-external-input",
+        action="store_true",
+        help="Allow input/schema/metadata paths outside canonical battery seed surfaces.",
+    )
     return parser.parse_args()
 
 
@@ -96,17 +98,42 @@ def _render_schema_errors(path: Path, errors: Iterable[str]) -> list[dict[str, s
 
 def main() -> None:
     args = parse_args()
+    surface = seed_surface_paths(battery_id=args.battery_id)
+    input_path = (args.input or surface.generated_root).resolve()
+    schema_dir = (args.schema_dir or surface.schemas_root).resolve()
+    metadata_dir = (args.metadata_dir or surface.metadata_root).resolve()
 
-    files = _discover_json_files(args.input)
+    if not args.allow_external_input:
+        input_path = ensure_within_allowed_roots(
+            input_path,
+            allowed_roots=[surface.generated_root, surface.curated_root, surface.review_root],
+            label="input",
+        )
+        schema_dir = ensure_within_allowed_roots(
+            schema_dir,
+            allowed_roots=[surface.schemas_root],
+            label="schema",
+        )
+        metadata_dir = ensure_within_allowed_roots(
+            metadata_dir,
+            allowed_roots=[surface.metadata_root],
+            label="metadata",
+        )
+
+    print(f"[info] input={input_path}")
+    print(f"[info] schema_dir={schema_dir}")
+    print(f"[info] metadata_dir={metadata_dir}")
+
+    files = _discover_json_files(input_path)
     if not files:
-        raise SystemExit(f"No JSON seed files found at {args.input}")
+        raise SystemExit(f"No JSON seed files found at {input_path}")
 
-    batch_schema = load_seed_batch_schema(args.schema_dir)
-    item_schema = load_seed_item_schema(args.schema_dir)
+    batch_schema = load_seed_batch_schema(schema_dir)
+    item_schema = load_seed_item_schema(schema_dir)
 
-    known_dimensions = load_dimension_ids(args.metadata_dir)
-    known_coverage = load_coverage_ids(args.metadata_dir)
-    known_pressure = load_pressure_ids(args.metadata_dir)
+    known_dimensions = load_dimension_ids(metadata_dir)
+    known_coverage = load_coverage_ids(metadata_dir)
+    known_pressure = load_pressure_ids(metadata_dir)
 
     all_items: list[dict[str, Any]] = []
     schema_failures: list[dict[str, str]] = []
@@ -178,9 +205,16 @@ def main() -> None:
     }
 
     if args.report_json is not None:
-        args.report_json.parent.mkdir(parents=True, exist_ok=True)
-        args.report_json.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-        print(f"[ok] wrote report to {args.report_json}")
+        report_path = args.report_json.resolve()
+        if not args.allow_external_input:
+            report_path = ensure_within_allowed_roots(
+                report_path,
+                allowed_roots=[surface.review_root],
+                label="report",
+            )
+        report_path.parent.mkdir(parents=True, exist_ok=True)
+        report_path.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        print(f"[ok] wrote report to {report_path}")
 
     if schema_failures:
         raise SystemExit(1)
