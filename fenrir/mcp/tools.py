@@ -8,7 +8,7 @@ from fenrir.batteries.registry import get_battery, list_batteries
 from fenrir.conditions.registry import list_conditions
 from fenrir.mcp.schemas import CompareRunsRequest, GenerateReportRequest, RunBatteryRequest
 from fenrir.orchestrator.runner import BatteryRunner
-from fenrir.scoring.wrapper_dependence import compute_wrapper_dependence
+from fenrir.scoring.wrapper_dependence import compute_pair_wrapper_dependence
 from fenrir.storage.run_store import RunStore
 
 
@@ -17,7 +17,8 @@ class FenrirMCPTools:
 
     def __init__(self, *, battery_root: Path, run_output_root: Path) -> None:
         self._battery_root = battery_root
-        self._runner = BatteryRunner(battery_root=battery_root, store=RunStore(run_output_root))
+        self._store = RunStore(run_output_root)
+        self._runner = BatteryRunner(battery_root=battery_root, store=self._store)
 
     def list_batteries(self) -> dict[str, object]:
         return {
@@ -46,8 +47,12 @@ class FenrirMCPTools:
             "conditions": [
                 {
                     "condition_id": condition.id,
+                    "condition_version": condition.version,
                     "description": condition.description,
                     "apply_stressors": condition.apply_stressors,
+                    "system_prompt_source": condition.system_prompt_source,
+                    "system_prompt_hash": condition.system_prompt_hash,
+                    "prompt_template_version": condition.prompt_template_version,
                 }
                 for condition in list_conditions()
             ]
@@ -62,11 +67,15 @@ class FenrirMCPTools:
             adapter=MockAdapter(),
             sampling=request.sampling,
             stopping=request.stopping,
+            production_wrapper_text=request.production_wrapper_text,
+            production_wrapper_source=request.production_wrapper_source,
         )
         return {
             "run_id": artifacts.manifest.run_id,
             "output_dir": str(artifacts.output_dir),
             "summary": artifacts.report.summary,
+            "condition_provenance": artifacts.report.condition_provenance.model_dump(),
+            "report_version": artifacts.report.report_version,
         }
 
     def run_stability_sweep(self, payload: dict[str, object]) -> dict[str, object]:
@@ -80,15 +89,21 @@ class FenrirMCPTools:
 
     def compare_runs(self, payload: dict[str, object]) -> dict[str, object]:
         request = CompareRunsRequest.model_validate(payload)
-        baseline_report = self._load_report(request.baseline_run_id)
-        candidate_report = self._load_report(request.candidate_run_id)
+        baseline_report = self._store.load_report(request.baseline_run_id)
+        candidate_report = self._store.load_report(request.candidate_run_id)
+
+        wrapper_dependence = compute_pair_wrapper_dependence(
+            baseline_condition_id=baseline_report.condition_provenance.condition_id,
+            baseline_trait_scores=baseline_report.trait_scores,
+            comparison_condition_id=candidate_report.condition_provenance.condition_id,
+            comparison_trait_scores=candidate_report.trait_scores,
+        )
         return {
             "baseline_run_id": request.baseline_run_id,
             "candidate_run_id": request.candidate_run_id,
-            "wrapper_dependence": compute_wrapper_dependence(
-                baseline_report.get("trait_scores", {}),
-                candidate_report.get("trait_scores", {}),
-            ),
+            "baseline_condition_id": baseline_report.condition_provenance.condition_id,
+            "candidate_condition_id": candidate_report.condition_provenance.condition_id,
+            "wrapper_dependence": wrapper_dependence.model_dump(),
         }
 
     def generate_report(self, payload: dict[str, object]) -> dict[str, object]:
@@ -96,10 +111,14 @@ class FenrirMCPTools:
         run_dir = self._runner.run_root / request.run_id
         if request.format.lower() == "json":
             target = run_dir / "report.json"
-            return {"run_id": request.run_id, "format": "json", "content": json.loads(target.read_text(encoding="utf-8"))}
+            return {
+                "run_id": request.run_id,
+                "format": "json",
+                "content": json.loads(target.read_text(encoding="utf-8")),
+            }
         target = run_dir / "report.md"
-        return {"run_id": request.run_id, "format": "markdown", "content": target.read_text(encoding="utf-8")}
-
-    def _load_report(self, run_id: str) -> dict[str, object]:
-        path = self._runner.run_root / run_id / "report.json"
-        return json.loads(path.read_text(encoding="utf-8"))
+        return {
+            "run_id": request.run_id,
+            "format": "markdown",
+            "content": target.read_text(encoding="utf-8"),
+        }

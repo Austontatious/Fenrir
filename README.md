@@ -24,6 +24,7 @@ source .venv/bin/activate
 pip install -e .[dev]
 python scripts/validate_battery.py
 python scripts/smoke_run.py
+python scripts/validate_artifacts.py --write-schemas --runs-root artifacts/runs
 pytest -q
 ```
 
@@ -41,7 +42,7 @@ Fenrir is split into five layers:
 
 - MVP vertical slice is implemented with a deterministic mock adapter.
 - OpenAI-compatible adapter is present as a thin transport placeholder.
-- Report schemas and battery artifacts are versioned.
+- Run artifacts are frozen under v1 manifest/response/report contracts with condition provenance and scoring trace capture.
 
 ## Safe-Claims Policy
 

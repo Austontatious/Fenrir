@@ -22,9 +22,26 @@ class RunStore:
 
         (run_dir / "manifest.json").write_text(manifest.model_dump_json(indent=2), encoding="utf-8")
         (run_dir / "responses.json").write_text(
-            json.dumps([record.model_dump() for record in responses], indent=2),
+            json.dumps([record.model_dump() for record in responses], indent=2, sort_keys=True),
             encoding="utf-8",
         )
         (run_dir / "report.json").write_text(report.model_dump_json(indent=2), encoding="utf-8")
         (run_dir / "report.md").write_text(render_markdown_report(report), encoding="utf-8")
         return run_dir
+
+    def load_manifest(self, run_id: str) -> RunManifest:
+        path = self._root / run_id / "manifest.json"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        return RunManifest.model_validate(payload)
+
+    def load_report(self, run_id: str) -> ReportRecord:
+        path = self._root / run_id / "report.json"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        return ReportRecord.model_validate(payload)
+
+    def load_responses(self, run_id: str) -> list[ResponseRecord]:
+        path = self._root / run_id / "responses.json"
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(payload, list):
+            raise ValueError("responses.json must be an array")
+        return [ResponseRecord.model_validate(item) for item in payload]

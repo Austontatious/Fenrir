@@ -12,6 +12,8 @@ class RunBatteryRequest(BaseModel):
     battery_id: str
     condition_id: str
     model_target: str = "mock://local"
+    production_wrapper_text: str | None = None
+    production_wrapper_source: str | None = None
     sampling: SamplingConfig = Field(default_factory=SamplingConfig)
     stopping: StoppingPolicy = Field(default_factory=StoppingPolicy)
 

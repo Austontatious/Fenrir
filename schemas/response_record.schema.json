@@ -1,0 +1,240 @@
+{
+  "$defs": {
+    "ResponseProvenance": {
+      "additionalProperties": false,
+      "properties": {
+        "battery_version": {
+          "title": "Battery Version",
+          "type": "string"
+        },
+        "item_version": {
+          "title": "Item Version",
+          "type": "string"
+        },
+        "model_adapter": {
+          "title": "Model Adapter",
+          "type": "string"
+        },
+        "model_target": {
+          "title": "Model Target",
+          "type": "string"
+        },
+        "production_wrapper_source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Production Wrapper Source"
+        },
+        "prompt_template_version": {
+          "title": "Prompt Template Version",
+          "type": "string"
+        },
+        "response_schema_ref": {
+          "title": "Response Schema Ref",
+          "type": "string"
+        },
+        "stress_profile_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stress Profile Id"
+        },
+        "system_prompt_hash": {
+          "title": "System Prompt Hash",
+          "type": "string"
+        },
+        "system_prompt_source": {
+          "title": "System Prompt Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "battery_version",
+        "item_version",
+        "model_target",
+        "model_adapter",
+        "response_schema_ref",
+        "system_prompt_source",
+        "system_prompt_hash",
+        "prompt_template_version"
+      ],
+      "title": "ResponseProvenance",
+      "type": "object"
+    },
+    "ScoringTraceEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "ambiguity_flag": {
+          "default": false,
+          "title": "Ambiguity Flag",
+          "type": "boolean"
+        },
+        "contradiction_flag": {
+          "default": false,
+          "title": "Contradiction Flag",
+          "type": "boolean"
+        },
+        "evidence": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Evidence"
+        },
+        "low_confidence": {
+          "default": true,
+          "title": "Low Confidence",
+          "type": "boolean"
+        },
+        "rubric_id": {
+          "title": "Rubric Id",
+          "type": "string"
+        },
+        "score_component": {
+          "title": "Score Component",
+          "type": "string"
+        },
+        "score_value": {
+          "title": "Score Value",
+          "type": "number"
+        },
+        "triggered_feature": {
+          "title": "Triggered Feature",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rubric_id",
+        "score_component",
+        "triggered_feature",
+        "score_value"
+      ],
+      "title": "ScoringTraceEntry",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "adapter_metadata": {
+      "additionalProperties": true,
+      "title": "Adapter Metadata",
+      "type": "object"
+    },
+    "condition_id": {
+      "title": "Condition Id",
+      "type": "string"
+    },
+    "condition_version": {
+      "title": "Condition Version",
+      "type": "string"
+    },
+    "error_state": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Error State"
+    },
+    "family": {
+      "title": "Family",
+      "type": "string"
+    },
+    "item_id": {
+      "title": "Item Id",
+      "type": "string"
+    },
+    "latency_ms": {
+      "title": "Latency Ms",
+      "type": "integer"
+    },
+    "parsed_response": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Parsed Response"
+    },
+    "provenance": {
+      "$ref": "#/$defs/ResponseProvenance"
+    },
+    "raw_response": {
+      "title": "Raw Response",
+      "type": "string"
+    },
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "fenrir.response_record.v1",
+      "default": "fenrir.response_record.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scoring_trace": {
+      "items": {
+        "$ref": "#/$defs/ScoringTraceEntry"
+      },
+      "title": "Scoring Trace",
+      "type": "array"
+    },
+    "seed": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Seed"
+    },
+    "temperature": {
+      "title": "Temperature",
+      "type": "number"
+    }
+  },
+  "required": [
+    "run_id",
+    "item_id",
+    "family",
+    "condition_id",
+    "condition_version",
+    "raw_response",
+    "parsed_response",
+    "adapter_metadata",
+    "latency_ms",
+    "temperature",
+    "seed",
+    "provenance"
+  ],
+  "title": "ResponseRecord",
+  "type": "object"
+}

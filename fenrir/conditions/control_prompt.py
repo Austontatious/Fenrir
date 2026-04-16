@@ -6,9 +6,12 @@ from pathlib import Path
 PROMPTS_ROOT = Path(__file__).resolve().parents[2] / "prompts" / "system"
 
 
+def prompt_path(name: str) -> Path:
+    return PROMPTS_ROOT / f"{name}.md"
+
+
 def load_prompt_template(name: str) -> str:
-    path = PROMPTS_ROOT / f"{name}.md"
-    return path.read_text(encoding="utf-8").strip()
+    return prompt_path(name).read_text(encoding="utf-8").strip()
 
 
 def eval_control_prompt() -> str:

@@ -1,0 +1,150 @@
+{
+  "$defs": {
+    "SamplingConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "max_output_tokens": {
+          "default": 220,
+          "title": "Max Output Tokens",
+          "type": "integer"
+        },
+        "seed": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Seed"
+        },
+        "structured_output": {
+          "default": false,
+          "title": "Structured Output",
+          "type": "boolean"
+        },
+        "temperature": {
+          "default": 0.2,
+          "title": "Temperature",
+          "type": "number"
+        }
+      },
+      "title": "SamplingConfig",
+      "type": "object"
+    },
+    "StoppingPolicy": {
+      "additionalProperties": false,
+      "properties": {
+        "max_items": {
+          "default": 5,
+          "title": "Max Items",
+          "type": "integer"
+        },
+        "stop_on_error_rate": {
+          "default": 1.0,
+          "title": "Stop On Error Rate",
+          "type": "number"
+        }
+      },
+      "title": "StoppingPolicy",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "battery_id": {
+      "title": "Battery Id",
+      "type": "string"
+    },
+    "battery_version": {
+      "title": "Battery Version",
+      "type": "string"
+    },
+    "condition_id": {
+      "title": "Condition Id",
+      "type": "string"
+    },
+    "condition_version": {
+      "title": "Condition Version",
+      "type": "string"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "fenrir_version": {
+      "default": "0.1.0",
+      "title": "Fenrir Version",
+      "type": "string"
+    },
+    "model_adapter": {
+      "title": "Model Adapter",
+      "type": "string"
+    },
+    "model_target": {
+      "title": "Model Target",
+      "type": "string"
+    },
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "sampling_config": {
+      "$ref": "#/$defs/SamplingConfig"
+    },
+    "schema_version": {
+      "const": "fenrir.run_manifest.v1",
+      "default": "fenrir.run_manifest.v1",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "selected_item_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Selected Item Ids",
+      "type": "array"
+    },
+    "stopping_policy": {
+      "$ref": "#/$defs/StoppingPolicy"
+    },
+    "stress_profile_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Stress Profile Id"
+    },
+    "system_prompt_hash": {
+      "title": "System Prompt Hash",
+      "type": "string"
+    },
+    "system_prompt_source": {
+      "title": "System Prompt Source",
+      "type": "string"
+    }
+  },
+  "required": [
+    "run_id",
+    "battery_id",
+    "battery_version",
+    "model_target",
+    "model_adapter",
+    "condition_id",
+    "condition_version",
+    "system_prompt_hash",
+    "system_prompt_source",
+    "sampling_config",
+    "stopping_policy",
+    "selected_item_ids"
+  ],
+  "title": "RunManifest",
+  "type": "object"
+}

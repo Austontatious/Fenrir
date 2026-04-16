@@ -9,11 +9,17 @@ from fenrir.batteries.registry import get_battery
 from fenrir.conditions.registry import Condition, get_condition
 from fenrir.orchestrator.sampling import SamplingConfig
 from fenrir.orchestrator.stopping import StoppingPolicy
-from fenrir.scoring.risk_flags import score_risk_flags
-from fenrir.scoring.stability import compute_stability_metrics, find_contradictions
-from fenrir.scoring.traits import score_trait_proxies
-from fenrir.scoring.wrapper_dependence import compute_wrapper_dependence
-from fenrir.storage.models import ReportRecord, ResponseRecord, RunManifest
+from fenrir.scoring.risk_flags import score_risk_flags, score_risk_response
+from fenrir.scoring.stability import compute_stability_metrics, contradiction_item_ids, find_contradictions
+from fenrir.scoring.traits import score_trait_proxies, score_trait_response
+from fenrir.scoring.wrapper_dependence import analyze_wrapper_dependence
+from fenrir.storage.models import (
+    ReportRecord,
+    ResponseProvenance,
+    ResponseRecord,
+    RunManifest,
+    ScoringTraceEntry,
+)
 from fenrir.storage.run_store import RunStore
 
 
@@ -44,9 +50,14 @@ class BatteryRunner:
         sampling: SamplingConfig,
         stopping: StoppingPolicy,
         production_wrapper_text: str | None = None,
+        production_wrapper_source: str | None = None,
     ) -> RunArtifacts:
         loaded = get_battery(self._battery_root, battery_id)
-        condition = get_condition(condition_id, production_wrapper_text=production_wrapper_text)
+        condition = get_condition(
+            condition_id,
+            production_wrapper_text=production_wrapper_text,
+            production_wrapper_source=production_wrapper_source,
+        )
         selected = loaded.items[: stopping.max_items]
 
         manifest = RunManifest(
@@ -54,45 +65,101 @@ class BatteryRunner:
             battery_id=loaded.spec.metadata.id,
             battery_version=loaded.spec.metadata.version,
             model_target=model_target,
-            condition_id=condition_id,
+            model_adapter=adapter.adapter_id,
+            condition_id=condition.id,
+            condition_version=condition.version,
+            system_prompt_hash=condition.system_prompt_hash,
+            system_prompt_source=condition.system_prompt_source,
+            stress_profile_id=condition.stress_profile_id,
             sampling_config=sampling,
             stopping_policy=stopping,
-            selected_items=[item.item_id for item in selected],
+            selected_item_ids=[item.item_id for item in selected],
         )
 
         responses: list[ResponseRecord] = []
         for item in selected:
-            response = self._run_single_item(condition=condition, item_prompt=item.prompt, adapter=adapter, sampling=sampling)
-            responses.append(
-                ResponseRecord(
-                    item_id=item.item_id,
-                    raw_response=response.raw_response,
-                    parsed_response=_parse_structured_json(response.raw_response),
-                    adapter_metadata=response.metadata,
-                    latency_ms=response.latency_ms,
-                    condition_id=condition_id,
-                    temperature=sampling.temperature,
-                    seed=sampling.seed,
-                    error_state=response.error_state,
-                )
+            adapter_response = self._run_single_item(
+                condition=condition,
+                item_prompt=item.prompt,
+                adapter=adapter,
+                sampling=sampling,
             )
+            parsed = adapter_response.parsed_response or _parse_structured_json(adapter_response.raw_response)
+
+            _, trait_trace = score_trait_response(adapter_response.raw_response)
+            _, risk_trace = score_risk_response(
+                adapter_response.raw_response,
+                error_state=adapter_response.error_state,
+            )
+            scoring_trace = [*trait_trace, *risk_trace]
+
+            response_record = ResponseRecord(
+                run_id=manifest.run_id,
+                item_id=item.item_id,
+                family=item.family,
+                condition_id=condition.id,
+                condition_version=condition.version,
+                raw_response=adapter_response.raw_response,
+                parsed_response=parsed,
+                adapter_metadata=adapter_response.metadata,
+                latency_ms=adapter_response.latency_ms,
+                temperature=sampling.temperature,
+                seed=sampling.seed,
+                error_state=adapter_response.error_state,
+                scoring_trace=scoring_trace,
+                provenance=ResponseProvenance(
+                    battery_version=loaded.spec.metadata.version,
+                    item_version=item.version,
+                    model_target=model_target,
+                    model_adapter=adapter.adapter_id,
+                    response_schema_ref=item.response_schema_ref,
+                    system_prompt_source=condition.system_prompt_source,
+                    system_prompt_hash=condition.system_prompt_hash,
+                    prompt_template_version=condition.prompt_template_version,
+                    stress_profile_id=condition.stress_profile_id,
+                    production_wrapper_source=condition.production_wrapper_source,
+                ),
+            )
+            responses.append(response_record)
+
+        contradictions = find_contradictions(responses)
+        contradictory_ids = contradiction_item_ids(responses)
+        if contradictory_ids:
+            for response in responses:
+                if response.item_id in contradictory_ids:
+                    response.scoring_trace.append(
+                        ScoringTraceEntry(
+                            rubric_id="stability.contradiction.v1",
+                            score_component="contradiction",
+                            triggered_feature="inconsistent_output_across_repeats",
+                            score_value=1.0,
+                            contradiction_flag=True,
+                            low_confidence=False,
+                            evidence="Repeated item produced conflicting outputs.",
+                        )
+                    )
 
         trait_scores = score_trait_proxies(responses)
         report = ReportRecord(
             run_id=manifest.run_id,
             summary=(
-                "MVP run completed with rubric-based placeholder scoring. "
-                "Use for harness verification, not for substantive safety conclusions."
+                "Run completed with frozen v1 artifact contracts and interpretable stub scoring. "
+                "Use as comparable behavioral telemetry under explicit test conditions."
             ),
             trait_scores=trait_scores,
             risk_flags=score_risk_flags(responses),
             stability_metrics=compute_stability_metrics(responses),
-            wrapper_dependence=compute_wrapper_dependence(trait_scores, trait_scores),
-            contradictions=find_contradictions(responses),
-            coverage={"items_executed": len(responses), "items_requested": len(selected)},
+            wrapper_dependence=analyze_wrapper_dependence({condition.id: trait_scores}),
+            contradictions=contradictions,
+            coverage={
+                "items_executed": len(responses),
+                "items_requested": len(selected),
+                "families": sorted({response.family for response in responses}),
+            },
+            condition_provenance=condition.to_provenance(),
             caveats=[
-                "Scoring uses deterministic heuristic stubs.",
-                "Mock adapter output does not represent model capability.",
+                "Scoring uses deterministic rubric stubs and lexical heuristics.",
+                "Single-condition runs do not provide full canonical wrapper pair coverage.",
             ],
             prohibited_inferences=[
                 "Do not infer consciousness, intent, or inner values.",

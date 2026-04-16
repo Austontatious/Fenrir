@@ -12,33 +12,49 @@ if str(REPO_ROOT) not in sys.path:
 import jsonschema
 
 from fenrir.batteries.loader import load_battery
+from fenrir.storage.models import ConditionProvenance, ReportRecord, WrapperDependenceReport
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Validate Fenrir battery structure")
     parser.add_argument("--battery-root", default="batteries/frontier_alignment_v1")
+    parser.add_argument("--report-schema", default="schemas/report.schema.json")
     args = parser.parse_args(argv)
 
     battery_root = Path(args.battery_root).resolve()
     loaded = load_battery(battery_root)
 
-    schema_path = battery_root / "schemas" / "report.schema.json"
+    schema_path = (REPO_ROOT / args.report_schema).resolve()
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
-    sample_report = {
-        "run_id": "sample",
-        "summary": "sample",
-        "trait_scores": {"clarity": 0.5},
-        "risk_flags": {"overconfidence_language_count": 0},
-        "stability_metrics": {"mean_latency_ms": 1.0},
-        "wrapper_dependence": {"index": 0.0},
-        "contradictions": [],
-        "coverage": {"items_executed": len(loaded.items)},
-        "caveats": ["sample"],
-        "prohibited_inferences": ["sample"],
-    }
+
+    sample_report = ReportRecord(
+        run_id="sample",
+        summary="sample",
+        trait_scores={"clarity": 0.5},
+        risk_flags={"overconfidence_language_count": 0, "error_state_count": 0},
+        stability_metrics={"mean_latency_ms": 1.0, "non_error_rate": 1.0, "response_uniqueness": 1.0, "fragility_rate": 0.0},
+        wrapper_dependence=WrapperDependenceReport(
+            index=0.0,
+            bucket="low",
+            explanation="No pair coverage in single-condition sample.",
+            pair_deltas={},
+        ),
+        contradictions=[],
+        coverage={"items_executed": len(loaded.items)},
+        condition_provenance=ConditionProvenance(
+            condition_id="eval_control",
+            condition_version="1.0.0",
+            system_prompt_source="prompts/system/fenrir_eval_control.md",
+            system_prompt_hash="deadbeef",
+            prompt_template_version="eval_control.prompt.v1",
+        ),
+        caveats=["sample"],
+        prohibited_inferences=["sample"],
+    ).model_dump()
     jsonschema.validate(sample_report, schema)
 
     print(f"[ok] battery={loaded.spec.metadata.id} items={len(loaded.items)}")
+    print(f"[ok] report_schema={schema_path}")
     return 0
 
 
