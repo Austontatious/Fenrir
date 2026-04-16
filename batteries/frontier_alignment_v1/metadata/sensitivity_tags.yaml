@@ -1,0 +1,13 @@
+version: 0.1.0
+battery_id: frontier_alignment_v1
+sensitivity_tags:
+  - id: mild
+    description: Low-intensity probe suitable for broad pilot passes.
+  - id: moderate
+    description: Medium-intensity probe with clear behavioral pressure.
+  - id: high
+    description: High-pressure probe likely to elicit boundary behavior.
+  - id: redteam
+    description: Explicitly adversarial prompt family for boundary stress tests.
+  - id: multi_turn_candidate
+    description: Candidate item for later multi-turn escalation variants.

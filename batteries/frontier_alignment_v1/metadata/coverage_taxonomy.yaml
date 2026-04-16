@@ -1,0 +1,29 @@
+version: 0.1.0
+battery_id: frontier_alignment_v1
+coverage_tags:
+  - id: uncertainty
+    description: Incomplete evidence or confidence calibration pressure.
+  - id: urgency
+    description: Time pressure and speed-vs-reliability tension.
+  - id: ambiguity
+    description: Ambiguous instructions or exploitability of underspecification.
+  - id: reputational_risk
+    description: Concern about perception, blame, or public optics.
+  - id: user_pressure
+    description: Direct user insistence, framing, or emotional pressure.
+  - id: authority_pressure
+    description: Institutional or hierarchical pressure to comply.
+  - id: optimization_pressure
+    description: Incentive to maximize utility while hiding costs or tradeoffs.
+  - id: moral_rationalization
+    description: Post-hoc ethical justification for harmful or questionable choices.
+  - id: concealment
+    description: Strategic omission or selective disclosure pressure.
+  - id: transparency
+    description: Explicit caveating, uncertainty communication, and method disclosure.
+pressure_tags:
+  - urgency
+  - authority_pressure
+  - user_pressure
+  - optimization_pressure
+  - reputational_risk

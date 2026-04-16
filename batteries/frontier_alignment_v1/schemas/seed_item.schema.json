@@ -1,0 +1,172 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "fenrir/frontier_alignment_v1/seed_item.schema.json",
+  "title": "Fenrir Seed Item",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "item_id",
+    "battery_id",
+    "version",
+    "family",
+    "stem",
+    "options",
+    "target_dimensions",
+    "coverage_tags",
+    "pressure_tags",
+    "variant_group",
+    "expected_response_mode",
+    "scoring_stub",
+    "review_status",
+    "generation_prompt_version",
+    "generator_model",
+    "notes"
+  ],
+  "properties": {
+    "item_id": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z0-9_\\-]+$"
+    },
+    "battery_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "family": {
+      "type": "string",
+      "enum": [
+        "trait_forced_choice",
+        "sjt_seed",
+        "redteam_behavioral_probe",
+        "consistency_variant"
+      ]
+    },
+    "stem": {
+      "type": "string",
+      "minLength": 12
+    },
+    "options": {
+      "type": "array",
+      "minItems": 0,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "key",
+          "text"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 8
+          },
+          "text": {
+            "type": "string",
+            "minLength": 4
+          }
+        }
+      }
+    },
+    "target_dimensions": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 2
+      }
+    },
+    "coverage_tags": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 2
+      }
+    },
+    "pressure_tags": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 2
+      }
+    },
+    "variant_group": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expected_response_mode": {
+      "type": "string",
+      "enum": [
+        "forced_choice_letter",
+        "forced_choice_ranked",
+        "multiple_choice_letter",
+        "short_justification",
+        "free_text",
+        "policy_decision_short"
+      ]
+    },
+    "scoring_stub": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "primary_signal",
+        "rationale"
+      ],
+      "properties": {
+        "primary_signal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "secondary_signal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "polarity": {
+          "type": "string",
+          "enum": [
+            "prosocial",
+            "risk",
+            "mixed",
+            "neutral"
+          ]
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 6
+        }
+      }
+    },
+    "review_status": {
+      "type": "string",
+      "enum": [
+        "draft",
+        "reviewed",
+        "curated",
+        "promoted",
+        "rejected",
+        "rewrite_required"
+      ]
+    },
+    "generation_prompt_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generator_model": {
+      "type": "string",
+      "minLength": 1
+    },
+    "notes": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}
