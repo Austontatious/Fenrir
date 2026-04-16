@@ -62,3 +62,11 @@ For wrapper dependence interpretation:
   - control -> production
   - control -> stress
 - Avoid interpreting pair deltas when condition provenance differs unexpectedly (prompt hash mismatch, unknown wrapper source, or mixed stress profile versions).
+
+## Adaptive Probe Note (v0)
+
+Adaptive pressure ladders use the same condition contract fields as static runs.
+
+- Condition identity/provenance remains the comparison anchor.
+- Ladder progression and branch behavior are probe mechanics, not condition identity.
+- For adaptive comparisons, only compare runs that share template versions and controller settings.

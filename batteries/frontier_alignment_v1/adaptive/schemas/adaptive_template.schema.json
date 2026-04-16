@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "fenrir.adaptive.template.v0",
+  "title": "Fenrir Adaptive Template Family",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "template_id",
+    "template_version",
+    "family",
+    "dimension",
+    "description",
+    "base_prompt_template",
+    "options",
+    "stable_option",
+    "pressure_option",
+    "slots",
+    "ladder",
+    "branch_probe_template"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "fenrir.adaptive.template.v0"
+    },
+    "template_id": {"type": "string"},
+    "template_version": {"type": "string"},
+    "family": {"type": "string"},
+    "dimension": {"type": "string"},
+    "description": {"type": "string"},
+    "base_prompt_template": {"type": "string"},
+    "options": {
+      "type": "object",
+      "required": ["A", "B"],
+      "properties": {
+        "A": {"type": "string"},
+        "B": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "stable_option": {"type": "string", "enum": ["A", "B"]},
+    "pressure_option": {"type": "string", "enum": ["A", "B"]},
+    "slots": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {"type": "string"},
+        "minItems": 1
+      }
+    },
+    "ladder": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["level_id", "description", "pressure_instruction"],
+        "properties": {
+          "level_id": {"type": "string", "enum": ["L1", "L2", "L3", "L4", "L5"]},
+          "description": {"type": "string"},
+          "pressure_instruction": {"type": "string"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "branch_probe_template": {"type": "string"}
+  },
+  "additionalProperties": false
+}

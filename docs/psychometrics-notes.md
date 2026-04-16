@@ -17,4 +17,8 @@ Fenrir uses behavioral proxies rather than claims about latent inner states.
 
 ## Future Direction
 
-Adaptive testing can be added later once calibration and reproducibility are established.
+Adaptive testing now has a narrow v0 pressure-ladder mode.
+
+- v0 tracks behavioral threshold estimates (`first_shift_level`, `max_stable_level`) under controlled pressure cues.
+- v0 remains heuristic and audit-oriented, not a calibrated psychometric instrument.
+- Future work should focus on calibration quality, inter-rater trace review, and reproducibility before stronger claims.

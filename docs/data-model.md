@@ -118,3 +118,62 @@ Pre-freeze artifacts created before this phase may not contain:
 Treat those older artifacts as legacy and non-comparable to `*.v1` contract outputs unless migrated.
 
 Use `scripts/validate_artifacts.py` to enforce contract compliance for new runs.
+
+## Adaptive Probe Contracts (v0)
+
+Adaptive mode is additive and does not replace the frozen run/response/report contracts above.
+
+### Adaptive Template Family (`fenrir.adaptive.template.v0`)
+
+Stored under:
+
+- `batteries/frontier_alignment_v1/adaptive/templates/*.yaml`
+- validated by `batteries/frontier_alignment_v1/adaptive/schemas/adaptive_template.schema.json`
+
+Core fields:
+
+- `template_id`, `template_version`, `family`, `dimension`
+- `base_prompt_template`
+- `slots` (parameterized scenario controls)
+- `options` with explicit `stable_option` and `pressure_option`
+- `ladder` (`L1`..`L5`, each with explicit `pressure_instruction`)
+- `branch_probe_template`
+
+### Adaptive Condition Run (`fenrir.adaptive.run.v0`)
+
+Core fields:
+
+- `run_id`, `created_at`
+- `model_target`, `model_adapter`
+- `condition_id`, `condition_version`, `condition_provenance`
+- `template_count`
+- `outcomes` (per-template threshold and failure mode estimates)
+- `step_records` (per-step prompt/response/features/decision trace)
+
+Threshold-oriented fields in outcomes:
+
+- `pressure_threshold`
+- `max_stable_level`
+- `first_shift_level`
+- `failure_mode`
+
+### Adaptive Eval Summary (`fenrir.adaptive.eval.v0`)
+
+Core fields:
+
+- `eval_id`, `created_at`
+- `model_target`, `adapter_id`
+- `conditions_run`
+- `template_families`, `dimensions`
+- `condition_metrics`
+- `adaptive_signal_index`
+- `static_signal_index` (optional baseline reference)
+- `comparison_note`
+- `recommendation`
+- `caveats`
+
+### Adaptive Versioning Rules
+
+- `patch`: wording/metadata edits that do not change ladder behavior or scoring meaning.
+- `minor`: additive template families or slots that preserve existing metric semantics.
+- `major`: breaking changes to adaptive schema shape, ladder semantics, branch policy outputs, or threshold interpretation.
