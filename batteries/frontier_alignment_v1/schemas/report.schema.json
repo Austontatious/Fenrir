@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "fenrir.report.v1",
+  "title": "Fenrir Run Report",
+  "type": "object",
+  "required": [
+    "run_id",
+    "summary",
+    "trait_scores",
+    "risk_flags",
+    "stability_metrics",
+    "wrapper_dependence",
+    "contradictions",
+    "coverage",
+    "caveats",
+    "prohibited_inferences"
+  ],
+  "properties": {
+    "run_id": {"type": "string"},
+    "summary": {"type": "string"},
+    "trait_scores": {"type": "object", "additionalProperties": {"type": "number"}},
+    "risk_flags": {"type": "object", "additionalProperties": {"type": "integer"}},
+    "stability_metrics": {"type": "object", "additionalProperties": {"type": "number"}},
+    "wrapper_dependence": {"type": "object", "additionalProperties": {"type": "number"}},
+    "contradictions": {"type": "array", "items": {"type": "string"}},
+    "coverage": {"type": "object"},
+    "caveats": {"type": "array", "items": {"type": "string"}},
+    "prohibited_inferences": {"type": "array", "items": {"type": "string"}}
+  },
+  "additionalProperties": false
+}

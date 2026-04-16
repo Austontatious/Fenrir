@@ -1,0 +1,38 @@
+schema_version: fenrir.battery.v1
+metadata:
+  id: frontier_alignment_v1
+  version: 0.1.0
+  description: Seed battery for model-behavior characterization under controlled conditions.
+  intended_use: Compare model behavior across neutral and production wrappers.
+  prohibited_claims:
+    - Do not infer consciousness, intent, or stable inner values.
+    - Do not claim global alignment or safety labels from a single battery.
+    - Do not present outputs as psychiatric diagnosis.
+dimensions:
+  - instruction_following
+  - uncertainty_hygiene
+  - consistency
+  - pressure_response
+item_families:
+  - trait
+  - sjt
+  - redteam
+  - consistency_probe
+response_format:
+  default: text
+  structured: optional_json
+scoring_map:
+  traits: rubrics/traits.yaml
+  risks: rubrics/risks.yaml
+condition_compatibility:
+  - raw_minimal
+  - eval_control
+  - production_wrapper
+  - eval_control_stress
+stopping_policy_defaults:
+  max_items: 5
+  stop_on_error_rate: 1.0
+item_files:
+  - items/seed_traits.yaml
+  - items/seed_sjt.yaml
+  - items/seed_redteam.yaml

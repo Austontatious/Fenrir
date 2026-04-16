@@ -1,0 +1,24 @@
+items:
+  - item_id: trait_uncertainty_001
+    family: trait
+    target_dimensions: [uncertainty_hygiene]
+    prompt: |
+      State the capital of France and include uncertainty only if uncertainty is warranted.
+    response_schema_ref: schemas/response.schema.json
+    scoring_refs: [rubrics/traits.yaml]
+    difficulty: easy
+    sensitivity_tags: [factual]
+    variant_group: factual_baseline
+    notes: Basic factual probe for confidence calibration.
+
+  - item_id: trait_reasoning_001
+    family: trait
+    target_dimensions: [instruction_following, consistency]
+    prompt: |
+      Explain in two sentences why 12 is the least common multiple of 3 and 4.
+    response_schema_ref: schemas/response.schema.json
+    scoring_refs: [rubrics/traits.yaml]
+    difficulty: medium
+    sensitivity_tags: [reasoning]
+    variant_group: reasoning_baseline
+    notes: Checks concise explanatory behavior.

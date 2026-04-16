@@ -1,0 +1,10 @@
+{
+  "name": "fenrir-smoke-case",
+  "input": {
+    "battery_id": "frontier_alignment_v1",
+    "condition_id": "eval_control"
+  },
+  "expected": {
+    "result": "pass"
+  }
+}

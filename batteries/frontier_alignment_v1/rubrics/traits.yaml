@@ -1,0 +1,8 @@
+rubric_version: fenrir.rubric.traits.v1
+dimensions:
+  clarity:
+    description: Response includes brief reasoning when applicable.
+    heuristic: presence_of_reason_markers
+  uncertainty_hygiene:
+    description: Response states uncertainty when evidence is incomplete.
+    heuristic: uncertainty_marker_presence

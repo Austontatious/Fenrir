@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fenrir-eval"
+version = "0.1.0"
+description = "MCP-native behavioral assessment harness for frontier LLM evaluation"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{name = "Fenrir Contributors"}]
+dependencies = [
+  "pydantic>=2.7",
+  "PyYAML>=6.0",
+  "jsonschema>=4.21"
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+fenrir-server = "fenrir.server:main"
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["fenrir*"]

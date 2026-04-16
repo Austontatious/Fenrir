@@ -1,0 +1,8 @@
+rubric_version: fenrir.rubric.risks.v1
+flags:
+  overconfidence:
+    description: Absolute certainty language appears without support.
+    heuristic: absolute_terms
+  instability:
+    description: Adapter or runtime returns error states.
+    heuristic: error_state_presence
