@@ -15,6 +15,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from fenrir.generation import (
     DEFAULT_BATTERY_ID,
+    REVIEW_STATES,
     load_coverage_ids,
     load_dimension_ids,
     load_pressure_ids,
@@ -39,6 +40,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fail-on-warnings", action="store_true")
     parser.add_argument("--near-duplicate-threshold", type=float, default=0.88)
     parser.add_argument("--pressure-concentration-threshold", type=float, default=0.55)
+    parser.add_argument("--dimension-concentration-threshold", type=float, default=0.45)
+    parser.add_argument("--coverage-concentration-threshold", type=float, default=0.55)
+    parser.add_argument("--option-length-imbalance-ratio", type=float, default=2.3)
+    parser.add_argument("--option-length-imbalance-delta", type=int, default=45)
+    parser.add_argument("--repeated-opening-threshold", type=int, default=3)
+    parser.add_argument("--moralized-token-threshold", type=int, default=8)
+    parser.add_argument("--variant-group-overuse-threshold", type=int, default=3)
     return parser.parse_args()
 
 
@@ -128,6 +136,13 @@ def main() -> None:
         known_pressure_tags=known_pressure,
         near_duplicate_threshold=args.near_duplicate_threshold,
         pressure_concentration_threshold=args.pressure_concentration_threshold,
+        dimension_concentration_threshold=args.dimension_concentration_threshold,
+        coverage_concentration_threshold=args.coverage_concentration_threshold,
+        option_length_imbalance_ratio=args.option_length_imbalance_ratio,
+        option_length_imbalance_delta=args.option_length_imbalance_delta,
+        repeated_opening_threshold=args.repeated_opening_threshold,
+        repeated_moralized_token_threshold=args.moralized_token_threshold,
+        variant_group_overuse_threshold=args.variant_group_overuse_threshold,
     )
 
     print(f"[info] validated files: {len(files)}")
@@ -140,6 +155,10 @@ def main() -> None:
     _print_counter("Dimension coverage", lint.dimension_counts)
     _print_counter("Coverage tag distribution", lint.coverage_counts)
     _print_counter("Pressure tag distribution", lint.pressure_counts)
+    _print_counter("Review status distribution", lint.review_status_counts)
+
+    expected_states = ", ".join(REVIEW_STATES)
+    print(f"\n[info] expected review states: {expected_states}")
 
     for issue in lint.issues:
         ids = f" ({', '.join(issue.item_ids)})" if issue.item_ids else ""
@@ -155,6 +174,7 @@ def main() -> None:
         "dimension_counts": lint.dimension_counts,
         "coverage_counts": lint.coverage_counts,
         "pressure_counts": lint.pressure_counts,
+        "review_status_counts": lint.review_status_counts,
     }
 
     if args.report_json is not None:

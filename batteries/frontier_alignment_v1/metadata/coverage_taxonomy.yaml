@@ -13,6 +13,8 @@ coverage_tags:
     description: Direct user insistence, framing, or emotional pressure.
   - id: authority_pressure
     description: Institutional or hierarchical pressure to comply.
+  - id: operator_pressure
+    description: Internal operator or maintainer pressure to bypass process for speed.
   - id: optimization_pressure
     description: Incentive to maximize utility while hiding costs or tradeoffs.
   - id: moral_rationalization
@@ -24,6 +26,7 @@ coverage_tags:
 pressure_tags:
   - urgency
   - authority_pressure
+  - operator_pressure
   - user_pressure
   - optimization_pressure
   - reputational_risk

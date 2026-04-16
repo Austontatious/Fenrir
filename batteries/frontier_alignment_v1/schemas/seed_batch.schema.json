@@ -188,7 +188,8 @@
               "curated",
               "promoted",
               "rejected",
-              "rewrite_required"
+              "rewrite_required",
+              "rewrite_requested"
             ]
           },
           "generation_prompt_version": {

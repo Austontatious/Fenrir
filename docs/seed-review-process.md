@@ -3,57 +3,80 @@
 ## Claims Discipline
 
 Fenrir seed artifacts are **draft behavioral probes**.
-They are not validated clinical instruments and should not be represented as psychometrically validated scales.
+They are not validated clinical instruments and must not be represented as psychometrically validated scales.
 
-## Lifecycle
+## Review States and Criteria
 
-1. `draft`: machine-generated; unreviewed.
-2. `reviewed`: human-reviewed and edited as needed.
-3. `curated`: accepted into curated seed inventory.
-4. `promoted`: selected for downstream testing batteries.
-5. `rejected` or `rewrite_required`: removed or routed back to generation.
+### `draft`
+Machine-generated or newly authored candidate item awaiting human review.
 
-## Reviewer Goals
+### `reviewed`
+Minimum criteria:
 
-Reviewers should optimize for behavioral discriminability, not surface moral signaling.
+- schema valid
+- metadata complete
+- dedupe/lint checked
+- human has inspected item
 
-Accept items that:
+### `curated`
+Minimum criteria:
 
-- encode realistic tradeoffs
-- avoid obvious good/bad answer cues
-- align with target dimensions and tags
-- have plausible options and coherent scoring stubs
+- options are balanced/plausible
+- tradeoff is non-obvious
+- diagnostic value judged adequate
+- no redundant near-duplicate already curated
 
-Reject or rewrite items that:
+### `promoted`
+Minimum criteria:
 
-- are repetitive or near-duplicate
-- moralize explicitly (easy virtue-signaling)
-- have unbalanced options
-- lack clear pressure context
-- contain weak or mismatched metadata
+- item used successfully in at least one controlled run
+- scoring behavior acceptable
+- no major ambiguity or critical failure discovered
 
-## Handling Paraphrase/Consistency Groups
+### `rejected`
+Item is removed from active curation due to structural weakness or low diagnostic value.
 
-- `variant_group` links semantically related items.
-- A group should include one conceptual probe and one or more paraphrase variants.
-- If one variant is rejected for leakage or imbalance, review sibling variants for correlated flaws.
-- Keep accepted variants behaviorally equivalent while varying wording and framing.
+### `rewrite_requested`
+Item has potential but requires targeted edits before re-review.
 
-## Recommended Review Loop
+## Allowed Transition Pattern
 
-1. Run validation and lint:
+Primary path:
+
+- `draft -> reviewed -> curated -> promoted`
+
+Fallback paths:
+
+- `draft -> rewrite_requested -> reviewed`
+- `reviewed -> rewrite_requested`
+- `reviewed -> rejected`
+- `curated -> rewrite_requested`
+- `promoted -> rewrite_requested`
+
+## Reviewer Actions and Reason Codes
+
+Recommended action field in review packets:
+
+- `keep`
+- `revise`
+- `reject`
+
+Standard reason codes:
+
+- `OBVIOUS_VIRTUE_SIGNAL`
+- `OPTION_ASYMMETRY`
+- `REPEATED_SKELETON`
+- `BLAND_NON_DIAGNOSTIC`
+- `MISSING_REALISTIC_PRESSURE`
+- `METADATA_DRIFT`
+- `SCORING_STUB_WEAK`
+
+## Practical Review Loop
+
+1. Validate and lint:
    - `python3 scripts/validate_seed_bank.py --input batteries/frontier_alignment_v1/seeds/generated`
-2. Export review packet:
+2. Export reviewer packet:
    - `python3 scripts/export_seed_review.py --input batteries/frontier_alignment_v1/seeds/generated`
-3. Annotate each item with action (`accept`, `edit`, `reject`, `rewrite`).
-4. Move accepted items to `seeds/curated/` with updated `review_status` and notes.
-5. Regenerate gaps (dimensions/tags/families) as needed.
-
-## Promotion Readiness (Future)
-
-Promotion into scored batteries should happen only after:
-
-- stability checks across paraphrase variants
-- preliminary reliability and bias checks
-- policy and safety review for adversarial probes
-- explicit documentation of limits and intended use
+3. Mark action + reason code for each item.
+4. Apply edits and set `review_status` accordingly.
+5. Move high-confidence items to `seeds/curated/`.

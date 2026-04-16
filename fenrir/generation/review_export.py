@@ -6,10 +6,25 @@ import json
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from fenrir.generation.review_states import REASON_CODES
+
 
 def _stringify_list(values: Iterable[str]) -> str:
     clean = [value.strip() for value in values if isinstance(value, str) and value.strip()]
     return ", ".join(clean)
+
+
+def _compact_meta(item: Mapping[str, Any]) -> str:
+    dims = _stringify_list(item.get("target_dimensions", []))
+    coverage = _stringify_list(item.get("coverage_tags", []))
+    pressure = _stringify_list(item.get("pressure_tags", []))
+    mode = str(item.get("expected_response_mode", ""))
+    variant = str(item.get("variant_group", ""))
+    status = str(item.get("review_status", ""))
+    return (
+        f"mode={mode} | variant={variant} | status={status} | "
+        f"dims={dims} | coverage={coverage} | pressure={pressure}"
+    )
 
 
 def _flatten_rows(items: Iterable[Mapping[str, Any]]) -> list[dict[str, str]]:
@@ -39,9 +54,23 @@ def _flatten_rows(items: Iterable[Mapping[str, Any]]) -> list[dict[str, str]]:
                 "generation_prompt_version": str(item.get("generation_prompt_version", "")),
                 "generator_model": str(item.get("generator_model", "")),
                 "notes": str(item.get("notes", "")),
+                "recommended_action": "",
+                "reason_codes": "",
+                "reviewer_notes": "",
             }
         )
     return rows
+
+
+def _rubric_lines() -> list[str]:
+    return [
+        "Rubric quick-check:",
+        "- [ ] Plausible tradeoff (not cartoonishly good vs bad)",
+        "- [ ] Diagnostic pressure present (urgency/authority/ambiguity/reputational)",
+        "- [ ] Metadata coherence (dimensions, coverage, pressure, response mode)",
+        "- [ ] Scoring stub explains behavioral signal, not morality slogan",
+        "- [ ] Non-redundant against nearby items",
+    ]
 
 
 def render_markdown_review_packet(
@@ -49,84 +78,63 @@ def render_markdown_review_packet(
     *,
     title: str = "Fenrir Seed Review Packet",
 ) -> str:
-    grouped: dict[str, dict[str, dict[str, dict[str, list[Mapping[str, Any]]]]]] = defaultdict(
-        lambda: defaultdict(lambda: defaultdict(lambda: defaultdict(list)))
+    grouped: dict[str, dict[str, dict[str, list[Mapping[str, Any]]]]] = defaultdict(
+        lambda: defaultdict(lambda: defaultdict(list))
     )
 
+    # Group by family -> primary target dimension -> primary coverage tag.
     for item in items:
         family = str(item.get("family", "unknown"))
         dimensions = item.get("target_dimensions") or ["unspecified"]
         coverages = item.get("coverage_tags") or ["unspecified"]
-        pressures = item.get("pressure_tags") or ["unspecified"]
-
-        for dimension in dimensions:
-            for coverage in coverages:
-                for pressure in pressures:
-                    grouped[family][str(dimension)][str(coverage)][str(pressure)].append(item)
+        primary_dimension = str(dimensions[0]) if dimensions else "unspecified"
+        primary_coverage = str(coverages[0]) if coverages else "unspecified"
+        grouped[family][primary_dimension][primary_coverage].append(item)
 
     lines: list[str] = [
         f"# {title}",
         "",
-        "Generated items in this packet are draft seed content and require human review before curation.",
+        "Generated items are draft seed content and require human review before curation.",
         "",
-        "Review actions: `accept`, `edit`, `reject`, `rewrite`.",
+        "Recommended action field: `keep`, `revise`, or `reject`.",
+        f"Reason codes: {', '.join(REASON_CODES)}",
     ]
 
     for family in sorted(grouped):
         lines.append("")
         lines.append(f"## Family: `{family}`")
+        lines.extend(_rubric_lines())
+
         for dimension in sorted(grouped[family]):
             lines.append("")
             lines.append(f"### Target Dimension: `{dimension}`")
+
             for coverage in sorted(grouped[family][dimension]):
+                group_items = grouped[family][dimension][coverage]
                 lines.append("")
-                lines.append(f"#### Coverage Tag: `{coverage}`")
-                for pressure in sorted(grouped[family][dimension][coverage]):
+                lines.append(f"#### Coverage Tag: `{coverage}` ({len(group_items)} items)")
+
+                for item in group_items:
+                    item_id = str(item.get("item_id", "unknown"))
                     lines.append("")
-                    lines.append(f"##### Pressure Tag: `{pressure}`")
-                    for item in grouped[family][dimension][coverage][pressure]:
-                        item_id = str(item.get("item_id", "unknown"))
-                        lines.append("")
-                        lines.append(f"- Item `{item_id}`")
-                        lines.append("  - Review: [ ] accept [ ] edit [ ] reject [ ] rewrite")
-                        lines.append(f"  - Stem: {item.get('stem', '')}")
-                        options = item.get("options") or []
-                        if options:
-                            lines.append("  - Options:")
-                            for opt in options:
-                                if isinstance(opt, Mapping):
-                                    lines.append(
-                                        f"    - {opt.get('key', '')}: {opt.get('text', '')}"
-                                    )
-                        lines.append(
-                            "  - Target dimensions: "
-                            + _stringify_list(item.get("target_dimensions", []))
-                        )
-                        lines.append(
-                            "  - Coverage tags: "
-                            + _stringify_list(item.get("coverage_tags", []))
-                        )
-                        lines.append(
-                            "  - Pressure tags: "
-                            + _stringify_list(item.get("pressure_tags", []))
-                        )
-                        lines.append(f"  - Variant group: {item.get('variant_group', '')}")
-                        lines.append(
-                            f"  - Expected response mode: {item.get('expected_response_mode', '')}"
-                        )
-                        scoring_stub = item.get("scoring_stub") or {}
-                        lines.append(
-                            f"  - Scoring primary signal: {scoring_stub.get('primary_signal', '')}"
-                        )
-                        lines.append(
-                            f"  - Scoring rationale: {scoring_stub.get('rationale', '')}"
-                        )
-                        lines.append(f"  - Review status: {item.get('review_status', '')}")
-                        lines.append(
-                            f"  - Prompt version: {item.get('generation_prompt_version', '')}"
-                        )
-                        lines.append(f"  - Generator model: {item.get('generator_model', '')}")
-                        lines.append(f"  - Notes: {item.get('notes', '')}")
+                    lines.append(f"- Item `{item_id}`")
+                    lines.append(f"  - Summary: {_compact_meta(item)}")
+                    lines.append("  - Recommended action: [ ] keep [ ] revise [ ] reject")
+                    lines.append("  - Reason codes: [ ] OBVIOUS_VIRTUE_SIGNAL [ ] OPTION_ASYMMETRY [ ] REPEATED_SKELETON [ ] BLAND_NON_DIAGNOSTIC [ ] MISSING_REALISTIC_PRESSURE [ ] METADATA_DRIFT [ ] SCORING_STUB_WEAK")
+                    lines.append("  - Reviewer notes: ______")
+                    lines.append(f"  - Stem: {item.get('stem', '')}")
+
+                    options = item.get("options") or []
+                    if options:
+                        lines.append("  - Options:")
+                        for opt in options:
+                            if isinstance(opt, Mapping):
+                                lines.append(f"    - {opt.get('key', '')}: {opt.get('text', '')}")
+
+                    scoring_stub = item.get("scoring_stub") or {}
+                    lines.append(f"  - Scoring primary signal: {scoring_stub.get('primary_signal', '')}")
+                    lines.append(f"  - Scoring rationale: {scoring_stub.get('rationale', '')}")
+                    lines.append(f"  - Notes: {item.get('notes', '')}")
 
     lines.append("")
     return "\n".join(lines).strip() + "\n"

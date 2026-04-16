@@ -5,13 +5,10 @@
 Fenrir seed generation produces **draft behavioral probe items** for review workflows.
 Generated output is not a validated psychometric instrument and must not be presented as one.
 
-This pipeline focuses on reproducible machine generation plus validation scaffolding:
+## Current Phase
 
-- trait-oriented forced-choice seeds
-- situational judgment test (SJT) seeds
-- adversarial/red-team behavioral probe seeds
-- consistency/paraphrase variant metadata
-- scoring stubs and coverage metadata
+This repository is in a **revision + curation** phase, not a scale phase.
+Generation remains useful for filling targeted gaps, but curated quality is prioritized over volume.
 
 ## Why Structured Generation
 
@@ -21,7 +18,17 @@ The generator uses OpenAI **Responses API** with strict JSON Schema (`text.forma
 - machine-validated before persistence
 - auditable through saved request/response artifacts
 
-This avoids brittle freeform parsing and supports repeatable regeneration.
+## Prompt Versioning
+
+Current default prompt version is `seedgen_v2`.
+
+`seedgen_v2` adds stricter requirements for:
+
+- balanced plausible options
+- anti-moralizing language
+- concrete context over abstract platitudes
+- explicit pressure realism (urgency/authority/ambiguity/reputational/operator)
+- reduced template repetition
 
 ## Repository Layout
 
@@ -30,19 +37,7 @@ This avoids brittle freeform parsing and supports repeatable regeneration.
 - battery assets: `batteries/frontier_alignment_v1/`
   - schemas under `schemas/`
   - taxonomy metadata under `metadata/`
-  - generated/curated seed directories under `seeds/`
-
-## Seed Families
-
-Current supported families:
-
-- `trait_forced_choice`
-- `sjt_seed`
-- `redteam_behavioral_probe`
-- `consistency_variant`
-
-Prompts target alignment-relevant tendencies such as concealment pressure,
-truthfulness vs approval-seeking, authority sensitivity, refusal stability, and manipulation tolerance.
+  - generated/curated seeds under `seeds/`
 
 ## Generate
 
@@ -51,13 +46,13 @@ python3 scripts/generate_seed_bank.py \
   --family trait_forced_choice \
   --family sjt_seed \
   --family redteam_behavioral_probe \
-  --count 10 \
+  --count 6 \
   --model gpt-5-mini \
   --output batteries/frontier_alignment_v1/seeds/generated
 ```
 
 Configuration defaults are loaded from `FenrirConfig` (`FENRIR_*` env surface).
-Raw request/response artifacts are written to `seeds/generated/raw/<timestamp>/...`.
+Raw request/response artifacts are written under `seeds/generated/raw/<timestamp>/...`.
 
 If API access is unavailable, fixture fallback is supported:
 
@@ -72,18 +67,21 @@ python3 scripts/generate_seed_bank.py \
 
 ```bash
 python3 scripts/validate_seed_bank.py \
-  --input batteries/frontier_alignment_v1/seeds/generated \
-  --report-json batteries/frontier_alignment_v1/seeds/generated/validation_report.json
+  --input batteries/frontier_alignment_v1/seeds/generated
 ```
 
-Validation stages:
+Validation includes schema checks plus lint heuristics for:
 
-1. Batch/item JSON schema validation.
-2. Lexical dedupe and near-duplicate stem checks.
-3. Linting for repeated option structures and obvious moralizing language.
-4. Coverage/pressure distribution summaries and taxonomy gap warnings.
+- near-duplicate stems
+- repeated opening templates
+- option-length imbalance
+- moralized token overuse
+- variant-group overuse and malformed consistency pairing
+- weak/content-free notes
+- weak scoring stubs
+- dimension/coverage/pressure concentration and gaps
 
-## Export For Review
+## Review Export
 
 ```bash
 python3 scripts/export_seed_review.py \
@@ -92,17 +90,15 @@ python3 scripts/export_seed_review.py \
   --csv-out batteries/frontier_alignment_v1/seeds/review/seed_review_packet.csv
 ```
 
-Review packet grouping includes family, target dimension, coverage tag, and pressure tag.
+Review packets are grouped by family then dimension/coverage and include:
 
-## Current Limitations
+- compact metadata summary line per item
+- keep/revise/reject placeholder
+- standardized rejection/rewrite reason codes
+- compact rubric header for rapid screening
 
-- No embedding-based semantic dedupe yet (lexical-only MVP).
-- Scoring metadata is stub-level and not calibrated.
-- Variant-group consistency is metadata-only until downstream stability evals are run.
-- The pipeline intentionally does not claim psychometric validity.
+## Limitations
 
-## Extension Guidance
-
-- Add families by extending schema enums + prompt templates.
-- Add stronger quality gates in `fenrir/generation/dedupe.py`.
-- Swap provider by replacing generation orchestration while keeping schema contracts stable.
+- No embedding-based semantic dedupe yet (lexical heuristics only).
+- Scoring metadata is still stub-level and non-calibrated.
+- Curated items remain review-grade probes, not psychometric instruments.

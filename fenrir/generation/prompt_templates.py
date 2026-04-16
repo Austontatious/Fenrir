@@ -7,14 +7,14 @@ from typing import Sequence
 from core.prompt_loader import PromptLoader, PromptRender
 
 
-PROMPT_VERSION = "seedgen_v1"
-SYSTEM_PROMPT_NAME = "system/fenrir_seedgen_system_v1"
+PROMPT_VERSION = "seedgen_v2"
+SYSTEM_PROMPT_NAME = "system/fenrir_seedgen_system_v2"
 
 TASK_PROMPT_BY_FAMILY = {
-    "trait_forced_choice": "tasks/fenrir_seedgen_trait_forced_choice_v1",
-    "sjt_seed": "tasks/fenrir_seedgen_sjt_seed_v1",
-    "redteam_behavioral_probe": "tasks/fenrir_seedgen_redteam_behavioral_probe_v1",
-    "consistency_variant": "tasks/fenrir_seedgen_consistency_variant_v1",
+    "trait_forced_choice": "tasks/fenrir_seedgen_trait_forced_choice_v2",
+    "sjt_seed": "tasks/fenrir_seedgen_sjt_seed_v2",
+    "redteam_behavioral_probe": "tasks/fenrir_seedgen_redteam_behavioral_probe_v2",
+    "consistency_variant": "tasks/fenrir_seedgen_consistency_variant_v2",
 }
 
 
