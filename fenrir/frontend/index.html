@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fenrir Local Setup</title>
+  <style>
+    :root {
+      --bg-1: #f3efe7;
+      --bg-2: #dfeaf0;
+      --ink: #132029;
+      --muted: #3f5968;
+      --card: rgba(255, 255, 255, 0.86);
+      --line: rgba(19, 32, 41, 0.16);
+      --brand: #0e8f7f;
+      --brand-soft: #95d6cd;
+      --warn: #9f4628;
+      --ok: #1f7a4e;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: radial-gradient(circle at 10% 10%, var(--bg-2), var(--bg-1));
+      min-height: 100vh;
+    }
+
+    main {
+      width: min(1080px, 94vw);
+      margin: 0 auto;
+      padding: 24px 0 40px;
+      animation: fade-in 220ms ease;
+    }
+
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .hero {
+      background: linear-gradient(120deg, rgba(14, 143, 127, 0.94), rgba(12, 95, 87, 0.88));
+      color: #edf8f7;
+      border-radius: 20px;
+      padding: 22px;
+      margin-bottom: 18px;
+      box-shadow: 0 10px 24px rgba(8, 40, 37, 0.24);
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: clamp(1.4rem, 2.2vw, 2rem);
+      letter-spacing: 0.02em;
+    }
+
+    .hero p {
+      margin: 0;
+      color: rgba(237, 248, 247, 0.92);
+      max-width: 74ch;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      gap: 12px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      backdrop-filter: blur(3px);
+    }
+
+    .card h2 {
+      margin: 0 0 10px;
+      font-size: 1.02rem;
+      color: var(--ink);
+    }
+
+    .span-4 { grid-column: span 4; }
+    .span-6 { grid-column: span 6; }
+    .span-8 { grid-column: span 8; }
+    .span-12 { grid-column: span 12; }
+
+    .kv {
+      display: grid;
+      grid-template-columns: 140px 1fr;
+      gap: 8px;
+      margin: 4px 0;
+      font-size: 0.94rem;
+    }
+
+    .label { color: var(--muted); }
+    .value { font-family: "IBM Plex Mono", "Menlo", monospace; }
+
+    form {
+      display: grid;
+      gap: 10px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    label {
+      display: grid;
+      gap: 4px;
+      font-size: 0.9rem;
+      color: var(--muted);
+    }
+
+    input, select, textarea, button {
+      font: inherit;
+    }
+
+    input, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 9px;
+      background: #fff;
+      color: var(--ink);
+    }
+
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .chip {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px 10px;
+      font-size: 0.8rem;
+      color: var(--ink);
+      background: rgba(255,255,255,0.8);
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 10px;
+      padding: 8px 12px;
+      cursor: pointer;
+      background: #e6ecef;
+      color: var(--ink);
+      transition: transform 110ms ease, background 110ms ease;
+    }
+
+    button.primary {
+      background: var(--brand);
+      color: #fff;
+    }
+
+    button:hover { transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+
+    .status {
+      font-size: 0.9rem;
+      margin-top: 8px;
+      white-space: pre-wrap;
+    }
+
+    .ok { color: var(--ok); }
+    .warn { color: var(--warn); }
+
+    pre {
+      margin: 8px 0 0;
+      max-height: 280px;
+      overflow: auto;
+      font-size: 0.82rem;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,0.82);
+      padding: 10px;
+      font-family: "IBM Plex Mono", "Menlo", monospace;
+    }
+
+    .small { font-size: 0.84rem; color: var(--muted); }
+
+    @media (max-width: 900px) {
+      .span-4, .span-6, .span-8 { grid-column: span 12; }
+      .row { grid-template-columns: 1fr; }
+      .kv { grid-template-columns: 110px 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="hero">
+      <h1>Fenrir Local Setup</h1>
+      <p>Configure a direct model endpoint first, verify connectivity, then run the frozen hybrid MVP readout. MCP-style tooling is available as an optional integration surface.</p>
+    </section>
+
+    <div class="grid">
+      <section class="card span-4">
+        <h2>Fenrir Status</h2>
+        <div class="kv"><div class="label">Service</div><div class="value" id="service-url">loading</div></div>
+        <div class="kv"><div class="label">Latest Readout</div><div class="value" id="readout-exists">loading</div></div>
+        <div class="kv"><div class="label">MCP Mode</div><div class="value" id="mcp-status">loading</div></div>
+        <div class="actions">
+          <button id="refresh-status">Refresh</button>
+          <button id="fetch-readout">Load Readout</button>
+        </div>
+      </section>
+
+      <section class="card span-8">
+        <h2>Model Endpoint Configuration</h2>
+        <form id="config-form">
+          <div class="row">
+            <label>Provider
+              <select id="provider" name="provider">
+                <option value="openai_compatible">OpenAI-compatible</option>
+                <option value="mock">Mock (local test)</option>
+              </select>
+            </label>
+            <label>Model Name
+              <input id="model" name="model" placeholder="gpt-4.1-mini" required />
+            </label>
+          </div>
+          <div class="row">
+            <label>Base URL
+              <input id="base-url" name="base_url" placeholder="https://api.openai.com/v1" />
+            </label>
+            <label>Timeout (seconds)
+              <input id="timeout" name="timeout_seconds" type="number" min="5" step="1" value="45" />
+            </label>
+          </div>
+          <div class="row">
+            <label>API Key / Token
+              <input id="api-key" name="api_key" type="password" placeholder="leave empty to keep existing" autocomplete="off" />
+            </label>
+            <label>MVP Battery
+              <input id="battery-id" name="battery_id" placeholder="frontier_alignment_v1" />
+            </label>
+          </div>
+          <div class="row">
+            <label>Conditions (comma-separated)
+              <input id="conditions" name="conditions" placeholder="raw_minimal,eval_control,eval_control_stress" />
+            </label>
+            <label>MCP (optional)
+              <select id="mcp-enabled" name="mcp_enabled">
+                <option value="false">Disabled</option>
+                <option value="true">Enabled</option>
+              </select>
+            </label>
+          </div>
+          <div class="actions">
+            <button type="submit" class="primary">Save Configuration</button>
+            <button type="button" id="test-connection">Test Connection</button>
+            <button type="button" id="run-eval" class="primary">Run Evaluation</button>
+          </div>
+          <div id="config-status" class="status"></div>
+        </form>
+      </section>
+
+      <section class="card span-6">
+        <h2>Available Modes</h2>
+        <div class="small">Frozen MVP uses hybrid battery + raw/control/stress conditions.</div>
+        <div class="chips" id="battery-chips"></div>
+        <div class="chips" id="condition-chips"></div>
+      </section>
+
+      <section class="card span-6">
+        <h2>Optional MCP Integration</h2>
+        <div class="small">Secondary interoperability surface; not required for local setup.</div>
+        <pre id="mcp-info">loading</pre>
+      </section>
+
+      <section class="card span-12">
+        <h2>Canonical Heuristic Readout</h2>
+        <div class="actions">
+          <button id="export-llm">Load LLM-Native Export (Derived)</button>
+        </div>
+        <pre id="readout-json">No readout loaded yet.</pre>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const statusEl = document.getElementById("config-status");
+
+    async function getJson(path) {
+      const response = await fetch(path);
+      return await response.json();
+    }
+
+    function setStatus(message, ok = true) {
+      statusEl.textContent = message;
+      statusEl.className = ok ? "status ok" : "status warn";
+    }
+
+    function formPayload() {
+      const apiKeyRaw = document.getElementById("api-key").value.trim();
+      const conditionsRaw = document.getElementById("conditions").value.trim();
+      const payload = {
+        provider: document.getElementById("provider").value,
+        base_url: document.getElementById("base-url").value.trim(),
+        model: document.getElementById("model").value.trim(),
+        timeout_seconds: Number(document.getElementById("timeout").value || "45"),
+        battery_id: document.getElementById("battery-id").value.trim(),
+        conditions: conditionsRaw ? conditionsRaw.split(",").map((item) => item.trim()).filter(Boolean) : [],
+        mcp_enabled: document.getElementById("mcp-enabled").value === "true",
+      };
+      if (apiKeyRaw) {
+        payload.api_key = apiKeyRaw;
+      }
+      return payload;
+    }
+
+    function applyConfig(config) {
+      document.getElementById("provider").value = config.provider || "openai_compatible";
+      document.getElementById("base-url").value = config.base_url || "";
+      document.getElementById("model").value = config.model || "";
+      document.getElementById("timeout").value = String(config.timeout_seconds || 45);
+      document.getElementById("battery-id").value = config.battery_id || "frontier_alignment_v1";
+      document.getElementById("conditions").value = (config.conditions || []).join(",");
+      document.getElementById("mcp-enabled").value = config.mcp_enabled ? "true" : "false";
+      document.getElementById("api-key").value = "";
+    }
+
+    function renderChips(containerId, values, prefix) {
+      const target = document.getElementById(containerId);
+      target.innerHTML = "";
+      values.forEach((value) => {
+        const chip = document.createElement("div");
+        chip.className = "chip";
+        chip.textContent = `${prefix}${value}`;
+        target.appendChild(chip);
+      });
+    }
+
+    async function refreshStatus() {
+      const status = await getJson("/api/status");
+      document.getElementById("service-url").textContent = status.service.url;
+      document.getElementById("readout-exists").textContent = status.latest_summary_exists ? "available" : "not yet";
+      document.getElementById("mcp-status").textContent = status.mcp.enabled ? "enabled" : "disabled";
+      document.getElementById("mcp-info").textContent = JSON.stringify(status.mcp, null, 2);
+    }
+
+    async function refreshConfig() {
+      const config = await getJson("/api/config");
+      applyConfig(config);
+      setStatus(`Config loaded. API key present: ${config.has_api_key ? "yes" : "no"}`, true);
+    }
+
+    async function refreshModes() {
+      const modes = await getJson("/api/modes");
+      renderChips("battery-chips", (modes.batteries || []).map((entry) => entry.battery_id), "battery: ");
+      renderChips("condition-chips", (modes.conditions || []).map((entry) => entry.condition_id), "condition: ");
+    }
+
+    async function loadReadout() {
+      const payload = await getJson("/api/readout/latest");
+      document.getElementById("readout-json").textContent = JSON.stringify(payload, null, 2);
+    }
+
+    document.getElementById("refresh-status").addEventListener("click", async () => {
+      await refreshStatus();
+      setStatus("Status refreshed.", true);
+    });
+
+    document.getElementById("fetch-readout").addEventListener("click", async () => {
+      await loadReadout();
+      setStatus("Readout loaded.", true);
+    });
+
+    document.getElementById("config-form").addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const response = await fetch("/api/config", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify(formPayload()),
+      });
+      const payload = await response.json();
+      if (response.ok && payload.status === "ok") {
+        applyConfig(payload.config);
+        setStatus("Configuration saved.", true);
+      } else {
+        setStatus(payload.message || "Configuration update failed.", false);
+      }
+    });
+
+    document.getElementById("test-connection").addEventListener("click", async () => {
+      const response = await fetch("/api/test-connection", {method: "POST"});
+      const payload = await response.json();
+      if (payload.status === "ok") {
+        setStatus(`Connection healthy (${payload.provider}).`, true);
+      } else {
+        setStatus(payload.message || "Connection test failed.", false);
+      }
+    });
+
+    document.getElementById("run-eval").addEventListener("click", async () => {
+      setStatus("Running hybrid MVP evaluation. This can take a while...", true);
+      const response = await fetch("/api/run-evaluation", {method: "POST"});
+      const payload = await response.json();
+      if (response.ok && payload.status === "ok") {
+        document.getElementById("readout-json").textContent = JSON.stringify(payload.canonical_readout, null, 2);
+        await refreshStatus();
+        setStatus("Evaluation completed.", true);
+      } else {
+        setStatus(payload.message || "Evaluation failed.", false);
+      }
+    });
+
+    document.getElementById("export-llm").addEventListener("click", async () => {
+      const payload = await getJson("/api/readout/llm-export");
+      document.getElementById("readout-json").textContent = payload.content || JSON.stringify(payload, null, 2);
+      setStatus("Loaded LLM-native derived export.", true);
+    });
+
+    Promise.all([refreshStatus(), refreshConfig(), refreshModes()]).catch((error) => {
+      setStatus(`Startup load failed: ${error}`, false);
+    });
+  </script>
+</body>
+</html>

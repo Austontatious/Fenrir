@@ -3,7 +3,7 @@ PYTHON ?= python3
 .PHONY: run test eval lint smoke validate-artifacts workspace-scope seed-workspace-scope
 
 run:
-	$(PYTHON) -m fenrir.server list_batteries
+	$(PYTHON) -m fenrir.server tool list_batteries
 
 test:
 	$(PYTHON) -m pytest -q
@@ -13,7 +13,7 @@ eval:
 
 lint:
 	$(PYTHON) -m py_compile core/config.py core/prompt_loader.py core/llm.py core/trace.py evals/runner.py
-	$(PYTHON) -m py_compile fenrir/server.py scripts/smoke_run.py scripts/validate_battery.py scripts/validate_artifacts.py scripts/run_gold_slice_eval.py scripts/compare_gold_slice_runs.py scripts/check_workspace_scope.py
+	$(PYTHON) -m py_compile fenrir/server.py fenrir/local_runtime.py fenrir/local_service.py scripts/smoke_run.py scripts/validate_battery.py scripts/validate_artifacts.py scripts/run_gold_slice_eval.py scripts/compare_gold_slice_runs.py scripts/check_workspace_scope.py scripts/check_fenrir_env.py scripts/install_fenrir.py scripts/start_fenrir.py
 
 smoke:
 	$(PYTHON) scripts/smoke_run.py

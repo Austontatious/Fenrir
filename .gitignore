@@ -5,5 +5,6 @@ __pycache__/
 .venv/
 venv/
 .env
+.fenrir/
 artifacts/
 *.egg-info/

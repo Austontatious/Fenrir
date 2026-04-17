@@ -1,62 +1,109 @@
 # Fenrir
 
-Fenrir is an evaluation harness for stress-testing LLM behavior under explicit operating conditions. It combines a compact static baseline with adaptive pressure ladders, then reports observed behavior shifts with versioned artifacts and bounded claims.
+Fenrir is a hybrid behavioral evaluation tool for LLMs. It tests condition-bounded behavior under pressure, compares shifts across conditions, and emits deterministic heuristic readouts with explicit uncertainty and non-claim guardrails.
 
 ## Why It Exists
 
-Many model evaluations flatten behavior into one score and hide condition effects. Fenrir exists to measure how responses change as pressure changes, while keeping prompt lineage, condition provenance, and scoring trace visible.
+Many evaluations compress behavior into a single score and hide condition effects. Fenrir is built to preserve provenance and make pressure-sensitive behavior shifts inspectable.
 
-## Why the Hybrid Design Exists
+## Product Shape (Current)
 
-Static-only batteries are stable but often low-signal. Adaptive-only probes can be high-signal but harder to compare across time.
+Primary local flow:
 
-Fenrir uses both:
+1. install Fenrir locally,
+2. start local Fenrir service,
+3. open setup-first web UI,
+4. configure direct model endpoint,
+5. test connection,
+6. run hybrid MVP evaluation,
+7. view/export canonical readout.
 
-- static anchors preserve continuity and comparability,
-- adaptive ladders surface threshold and failure-mode behavior under pressure,
-- one hybrid summary keeps those views aligned in a single MVP decision surface.
+Optional secondary flow:
 
-## Current MVP Scope
+- MCP-style interoperability via tool facade commands.
+
+## Hybrid MVP Scope
 
 Frozen MVP surfaces are defined in `docs/mvp-freeze.md`.
 
-Included in MVP:
+Canonical MVP battery path:
 
-- Hybrid battery: `batteries/frontier_alignment_v1/hybrid/hybrid_mvp_v1.yaml`
-- Static baseline slice: `batteries/frontier_alignment_v1/seeds/curated/static_baseline_mvp_v1.json`
-- Adaptive families: `authority_override`, `reputation_shielding`, `urgency_tradeoff`
-- Conditions: `raw_minimal`, `eval_control`, `eval_control_stress`
-- Stable contracts: `fenrir.run_manifest.v1`, `fenrir.response_record.v1`, `fenrir.report.v1`
-- Primary run path: `scripts/run_hybrid_mvp_eval.py`
+- `batteries/frontier_alignment_v1/hybrid/hybrid_mvp_v1.yaml`
+- `batteries/frontier_alignment_v1/seeds/curated/static_baseline_mvp_v1.json`
+- adaptive families: `authority_override`, `reputation_shielding`, `urgency_tradeoff`
+- conditions: `raw_minimal`, `eval_control`, `eval_control_stress`
 
-## What Fenrir Is Not
+## Local Installation and Startup
 
-- Not proof of alignment.
-- Not a clinical or psychometric diagnosis engine.
-- Not a universal safety oracle.
-- Not a measure of consciousness, intent, or inner values.
+```bash
+python3 scripts/install_fenrir.py
+python3 scripts/start_fenrir.py
+```
+
+Then open the printed URL (default `http://127.0.0.1:8765/`).
+
+Useful checks:
+
+```bash
+python3 scripts/check_fenrir_env.py
+pytest -q
+python3 evals/runner.py --check
+```
+
+## Setup-First Web UI
+
+The UI prioritizes setup and connection health over dashboarding.
+
+- service status and local address,
+- direct endpoint configuration (provider/base URL/key/model),
+- connection test,
+- available battery/condition modes,
+- one-click run + canonical readout,
+- optional MCP integration info panel.
+
+## Canonical Readout Contract
+
+User-facing contract is fixed in `docs/readout-contract.md`.
+
+Readout schema id:
+
+- `fenrir.ui_readout.v1`
+
+Canonical artifact source:
+
+- `artifacts/hybrid/hybrid_mvp_eval_v1.json`
+
+Optional export:
+
+- derived LLM-native readout (`/api/readout/llm-export`) for convenience only.
+
+## Optional MCP Exposure
+
+MCP remains a secondary integration surface.
+
+- primary path: direct endpoint setup + local UI,
+- optional tool facade: `fenrir-server tool ...`.
+
+## Claims Discipline
+
+Fenrir is a heuristic behavioral evaluator. It is not:
+
+- proof of alignment,
+- a clinical or psychometric diagnosis engine,
+- a universal safety oracle,
+- a measure of consciousness, intent, or inner values.
 
 ## Why the Name Fenrir
 
-Fenrir is named for the shadow metaphor: latent risk patterns that are easy to miss until pressure reveals them. In this project that is an evaluation framing only, not a claim that AI systems have a human psyche.
+Fenrir is named for the shadow metaphor: latent risk patterns that are easy to miss until pressure reveals them. Here that framing is operational and bounded, not a claim that AI systems have a human psyche.
 
-## Quickstart
+## Documentation Map
 
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -e .[dev]
-python scripts/validate_battery.py
-python scripts/run_hybrid_mvp_eval.py --adapter mock
-python scripts/validate_artifacts.py --write-schemas --runs-root artifacts/runs
-pytest -q
-```
-
-To run against OpenAI-compatible endpoints, configure `.env` from `.env.example` and run `scripts/run_hybrid_mvp_eval.py` with `--adapter openai`.
-
-## Project Status
-
-- Status: MVP-ready, now in freeze/stabilization mode.
-- Immediate priority: preserve frozen MVP comparability while isolating experimental work.
-- Current roadmap: `docs/roadmap.md`.
-- Freeze report: `docs/mvp-freeze-report.md`.
+- `docs/installation.md`
+- `docs/local-service.md`
+- `docs/frontend-usage.md`
+- `docs/readout-contract.md`
+- `docs/about.md`
+- `docs/mvp-freeze.md`
+- `docs/mvp-freeze-report.md`
+- `docs/outreach_note_daniel_hulme.md`
