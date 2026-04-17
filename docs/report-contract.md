@@ -4,6 +4,22 @@
 
 Fenrir run artifacts are intended to be durable, auditable, and comparable over time.
 
+## MVP Freeze Position (2026-04-17)
+
+The canonical MVP reporting surface is frozen to:
+
+- `fenrir.run_manifest.v1`
+- `fenrir.response_record.v1`
+- `fenrir.report.v1`
+- `hybrid_mvp_eval_v1` (hybrid summary id)
+
+Canonical battery references for this frozen surface:
+
+- `batteries/frontier_alignment_v1/hybrid/hybrid_mvp_v1.yaml`
+- `batteries/frontier_alignment_v1/seeds/curated/static_baseline_mvp_v1.json`
+
+Behavioral changes to frozen MVP report semantics require a versioned contract update, not an in-place mutation.
+
 The stable contract in this phase is:
 
 - `RunManifest` (`fenrir.run_manifest.v1`)

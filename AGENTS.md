@@ -37,6 +37,16 @@ The platform measures observed tendencies under explicit conditions and compares
 - Do not claim diagnosis, alignment proof, or model-internal intent from Fenrir outputs.
 - Preserve condition comparability: same items, explicit condition id, explicit sampling/stopping config.
 
+## MVP Freeze Guardrails (Required)
+- Treat `docs/mvp-freeze.md` as the canonical MVP-surface contract.
+- Do not casually mutate frozen MVP artifacts in place.
+- Any behavioral change to a frozen MVP surface requires:
+  - a new explicit versioned artifact path,
+  - a rationale note and compatibility impact summary,
+  - updated references in docs/scripts as needed.
+- Experimental work must live beside MVP paths, not silently inside them.
+- Public docs must keep explicit non-claims language (no diagnosis/alignment-proof/intent claims).
+
 ## Workspace Safety (Required)
 - Declare intended write scope before edits and keep the scope repo-local.
 - Stage with explicit allowlist paths only (`git add <paths>`), never blanket staging.
