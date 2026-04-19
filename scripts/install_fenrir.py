@@ -16,6 +16,7 @@ from fenrir.config import FenrirConfig
 from fenrir.local_runtime import (
     build_service_url,
     default_local_state,
+    load_local_state,
     resolve_service_port,
     save_local_state,
 )
@@ -29,6 +30,11 @@ def parse_args(config: FenrirConfig, argv: list[str] | None = None) -> argparse.
     parser.add_argument("--port-scan-limit", type=int, default=config.service_port_scan_limit)
     parser.add_argument("--start", action="store_true", help="Start Fenrir service after setup")
     parser.add_argument("--strict-port", action="store_true", help="Fail if requested port is occupied")
+    parser.add_argument(
+        "--overwrite-state",
+        action="store_true",
+        help="Reset local state file to defaults before writing host/port.",
+    )
     return parser.parse_args(argv)
 
 
@@ -51,12 +57,26 @@ def _ensure_env_file() -> Path:
     return env_path
 
 
-def _persist_state(config: FenrirConfig, *, host: str, port: int) -> None:
-    state = default_local_state(config)
+def _persist_state(
+    config: FenrirConfig,
+    *,
+    host: str,
+    port: int,
+    overwrite_state: bool,
+    state_path: Path | None = None,
+) -> None:
+    target_path = state_path or config.local_config_path
+    if overwrite_state:
+        state = default_local_state(config)
+        init_mode = "reset"
+    else:
+        state = load_local_state(target_path, defaults=default_local_state(config))
+        init_mode = "preserved"
+
     state.service_host = host
     state.service_port = port
-    save_local_state(config.local_config_path, state)
-    print(f"[fenrir-install] local config initialized: {config.local_config_path}")
+    save_local_state(target_path, state)
+    print(f"[fenrir-install] local config {init_mode}: {target_path}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -71,11 +91,24 @@ def main(argv: list[str] | None = None) -> int:
     _ensure_env_file()
 
     scan_limit = 1 if args.strict_port else max(1, args.port_scan_limit)
-    resolved_port = resolve_service_port(args.host, args.port, scan_limit=scan_limit)
+    try:
+        resolved_port = resolve_service_port(args.host, args.port, scan_limit=scan_limit)
+    except RuntimeError as exc:
+        print(f"[fenrir-install] error: {exc}")
+        print(
+            "[fenrir-install] choose another --port or increase --port-scan-limit; "
+            "use --strict-port only when you require an exact port."
+        )
+        return 2
     if resolved_port != args.port:
         print(f"[fenrir-install] requested port {args.port} unavailable; using {resolved_port}")
 
-    _persist_state(config, host=args.host, port=resolved_port)
+    _persist_state(
+        config,
+        host=args.host,
+        port=resolved_port,
+        overwrite_state=bool(args.overwrite_state),
+    )
     url = build_service_url(args.host, resolved_port)
     print(f"[fenrir-install] service URL: {url}")
 

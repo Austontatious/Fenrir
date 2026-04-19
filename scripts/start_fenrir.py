@@ -42,10 +42,18 @@ def main(argv: list[str] | None = None) -> int:
     if requested_port < 1 or requested_port > 65535:
         raise SystemExit("--port must be between 1 and 65535")
 
-    if args.strict_port:
-        resolved_port = resolve_service_port(args.host, requested_port, scan_limit=1)
-    else:
-        resolved_port = resolve_service_port(args.host, requested_port, scan_limit=max(1, args.port_scan_limit))
+    try:
+        if args.strict_port:
+            resolved_port = resolve_service_port(args.host, requested_port, scan_limit=1)
+        else:
+            resolved_port = resolve_service_port(args.host, requested_port, scan_limit=max(1, args.port_scan_limit))
+    except RuntimeError as exc:
+        print(f"[fenrir-start] error: {exc}")
+        print(
+            "[fenrir-start] choose another --port or increase --port-scan-limit; "
+            "use --strict-port only when you require an exact port."
+        )
+        return 2
 
     if resolved_port != requested_port:
         print(f"[fenrir-start] requested port {requested_port} unavailable; using {resolved_port}")

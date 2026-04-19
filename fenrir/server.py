@@ -57,7 +57,15 @@ def _run_tool(*, config: FenrirConfig, tool_name: str, battery_id: str) -> int:
 
 
 def _run_local_service(*, config: FenrirConfig, host: str, port: int, strict_port: bool, scan_limit: int) -> int:
-    resolved = resolve_service_port(host, port, scan_limit=1 if strict_port else max(1, scan_limit))
+    try:
+        resolved = resolve_service_port(host, port, scan_limit=1 if strict_port else max(1, scan_limit))
+    except RuntimeError as exc:
+        print(f"[fenrir-server] error: {exc}")
+        print(
+            "[fenrir-server] choose another --port or increase --port-scan-limit; "
+            "use --strict-port only when you require an exact port."
+        )
+        return 2
     if resolved != port:
         print(f"[fenrir-server] requested port {port} unavailable; using {resolved}")
 

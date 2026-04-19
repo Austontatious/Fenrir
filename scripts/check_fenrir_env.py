@@ -31,6 +31,11 @@ def parse_args(config: FenrirConfig, argv: list[str] | None = None) -> argparse.
     parser.add_argument("--host", default=config.service_host)
     parser.add_argument("--port", type=int, default=config.service_port)
     parser.add_argument("--scan-limit", type=int, default=config.service_port_scan_limit)
+    parser.add_argument(
+        "--strict-port",
+        action="store_true",
+        help="Require the exact requested port to be free.",
+    )
     parser.add_argument("--strict", action="store_true", help="Exit non-zero if any check fails")
     return parser.parse_args(argv)
 
@@ -80,12 +85,22 @@ def main(argv: list[str] | None = None) -> int:
     if is_port_open(args.host, requested_port):
         print(f"[ok] requested port available: {args.host}:{requested_port}")
     else:
-        checks_ok = False
-        try:
-            fallback = resolve_service_port(args.host, requested_port, scan_limit=max(1, args.scan_limit))
-            print(f"[warn] requested port occupied; first free fallback is {args.host}:{fallback}")
-        except RuntimeError as exc:
-            print(f"[fail] no free service port found: {exc}")
+        if args.strict_port:
+            checks_ok = False
+            print(
+                f"[fail] requested port occupied and --strict-port is set: "
+                f"{args.host}:{requested_port}"
+            )
+        else:
+            try:
+                fallback = resolve_service_port(args.host, requested_port, scan_limit=max(1, args.scan_limit))
+                print(
+                    f"[warn] requested port occupied; fallback is runnable at "
+                    f"{args.host}:{fallback}"
+                )
+            except RuntimeError as exc:
+                checks_ok = False
+                print(f"[fail] no free service port found: {exc}")
 
     if state.endpoint.provider == "openai_compatible" and not state.endpoint.api_key:
         print("[warn] local config has no API key; mock provider or API key required for live endpoint runs")

@@ -28,8 +28,14 @@ What it does:
 
 - installs dependencies (`pip install -e .[dev]`) unless `--skip-install` is used,
 - creates `.env` from `.env.example` when missing,
-- initializes local config at `.fenrir/local_config.json`,
+- preserves existing `.fenrir/local_config.json` by default (creates if missing),
 - resolves a usable local service port (default starts at `8765`).
+
+To explicitly reset local state to defaults during install:
+
+```bash
+python3 scripts/install_fenrir.py --overwrite-state
+```
 
 ## Start Immediately After Install
 
@@ -57,6 +63,12 @@ Use strict failure mode for CI/local gating:
 
 ```bash
 python3 scripts/check_fenrir_env.py --strict
+```
+
+To require the exact preferred port in env check:
+
+```bash
+python3 scripts/check_fenrir_env.py --strict --strict-port
 ```
 
 ## Common Options

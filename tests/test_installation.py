@@ -11,6 +11,10 @@ from fenrir.local_runtime import (
     resolve_service_port,
     save_local_state,
 )
+import fenrir.server as fenrir_server
+import scripts.check_fenrir_env as check_fenrir_env
+import scripts.install_fenrir as install_fenrir
+import scripts.start_fenrir as start_fenrir
 
 
 def test_resolve_service_port_scans_when_requested_port_is_taken() -> None:
@@ -35,3 +39,112 @@ def test_local_state_roundtrip(tmp_path: Path) -> None:
     assert loaded.service_port == 9876
     assert loaded.endpoint.api_key == "test_secret_key"
     assert loaded.endpoint.to_public_dict()["has_api_key"] is True
+
+
+def test_install_persist_state_preserves_existing_by_default(tmp_path: Path) -> None:
+    cfg = FenrirConfig.from_env()
+    path = tmp_path / "local_config.json"
+    existing = default_local_state(cfg)
+    existing.endpoint.model = "custom-model"
+    existing.endpoint.api_key = "sk-custom"
+    existing.conditions = ["eval_control"]
+    save_local_state(path, existing)
+
+    install_fenrir._persist_state(
+        cfg,
+        host="127.0.0.1",
+        port=9010,
+        overwrite_state=False,
+        state_path=path,
+    )
+    loaded = load_local_state(path, defaults=default_local_state(cfg))
+    assert loaded.service_port == 9010
+    assert loaded.endpoint.model == "custom-model"
+    assert loaded.endpoint.api_key == "sk-custom"
+    assert loaded.conditions == ["eval_control"]
+
+
+def test_install_persist_state_can_explicitly_overwrite(tmp_path: Path) -> None:
+    cfg = FenrirConfig.from_env()
+    path = tmp_path / "local_config.json"
+    existing = default_local_state(cfg)
+    existing.endpoint.model = "custom-model"
+    existing.endpoint.api_key = "sk-custom"
+    save_local_state(path, existing)
+
+    install_fenrir._persist_state(
+        cfg,
+        host="127.0.0.1",
+        port=9011,
+        overwrite_state=True,
+        state_path=path,
+    )
+    loaded = load_local_state(path, defaults=default_local_state(cfg))
+    assert loaded.service_port == 9011
+    assert loaded.endpoint.model == cfg.openai_model
+    assert loaded.endpoint.api_key == cfg.openai_api_key
+
+
+def test_start_script_handles_port_resolution_failure(monkeypatch, capsys) -> None:
+    def _raise(*_args, **_kwargs):
+        raise RuntimeError("port scan failed")
+
+    monkeypatch.setattr(start_fenrir, "resolve_service_port", _raise)
+    rc = start_fenrir.main(["--host", "127.0.0.1", "--port", "8765"])
+    output = capsys.readouterr().out
+
+    assert rc == 2
+    assert "error" in output
+    assert "choose another --port" in output
+
+
+def test_install_script_handles_port_resolution_failure(monkeypatch, capsys) -> None:
+    def _raise(*_args, **_kwargs):
+        raise RuntimeError("port scan failed")
+
+    monkeypatch.setattr(install_fenrir, "_ensure_env_file", lambda: Path(".env"))
+    monkeypatch.setattr(install_fenrir, "resolve_service_port", _raise)
+    rc = install_fenrir.main(["--skip-install", "--host", "127.0.0.1", "--port", "8765"])
+    output = capsys.readouterr().out
+
+    assert rc == 2
+    assert "error" in output
+    assert "choose another --port" in output
+
+
+def test_server_local_service_handles_port_resolution_failure(monkeypatch, capsys) -> None:
+    cfg = FenrirConfig.from_env()
+
+    def _raise(*_args, **_kwargs):
+        raise RuntimeError("port scan failed")
+
+    monkeypatch.setattr(fenrir_server, "resolve_service_port", _raise)
+    rc = fenrir_server._run_local_service(
+        config=cfg,
+        host="127.0.0.1",
+        port=8765,
+        strict_port=False,
+        scan_limit=10,
+    )
+    output = capsys.readouterr().out
+
+    assert rc == 2
+    assert "error" in output
+
+
+def test_check_env_treats_fallback_port_as_runnable(monkeypatch) -> None:
+    monkeypatch.setattr(check_fenrir_env.sys, "version_info", (3, 11, 0))
+    monkeypatch.setattr(check_fenrir_env, "_check_imports", lambda: (True, []))
+    monkeypatch.setattr(check_fenrir_env, "is_port_open", lambda *_args, **_kwargs: False)
+    monkeypatch.setattr(check_fenrir_env, "resolve_service_port", lambda *_args, **_kwargs: 9999)
+    rc = check_fenrir_env.main(["--strict"])
+    assert rc == 0
+
+
+def test_check_env_strict_port_requires_preferred_port(monkeypatch) -> None:
+    monkeypatch.setattr(check_fenrir_env.sys, "version_info", (3, 11, 0))
+    monkeypatch.setattr(check_fenrir_env, "_check_imports", lambda: (True, []))
+    monkeypatch.setattr(check_fenrir_env, "is_port_open", lambda *_args, **_kwargs: False)
+    monkeypatch.setattr(check_fenrir_env, "resolve_service_port", lambda *_args, **_kwargs: 9999)
+    rc = check_fenrir_env.main(["--strict", "--strict-port"])
+    assert rc == 1
