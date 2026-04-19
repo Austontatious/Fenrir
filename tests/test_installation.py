@@ -21,6 +21,17 @@ import scripts.install_fenrir as install_fenrir
 import scripts.start_fenrir as start_fenrir
 
 
+def _local_state_path(tmp_path: Path) -> Path:
+    return tmp_path / ".fenrir" / "local_config.json"
+
+
+def _configure_local_state_env(monkeypatch, tmp_path: Path) -> Path:
+    path = _local_state_path(tmp_path)
+    monkeypatch.setenv("FENRIR_LOCAL_STATE_DIR", str(path.parent))
+    monkeypatch.setenv("FENRIR_LOCAL_CONFIG_PATH", str(path))
+    return path
+
+
 def test_resolve_service_port_scans_when_requested_port_is_taken() -> None:
     host = "127.0.0.1"
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
@@ -327,3 +338,99 @@ def test_check_env_strict_port_requires_preferred_port(monkeypatch) -> None:
     monkeypatch.setattr(check_fenrir_env, "resolve_service_port", lambda *_args, **_kwargs: 9999)
     rc = check_fenrir_env.main(["--strict", "--strict-port"])
     assert rc == 1
+
+
+def test_install_twice_preserves_user_settings_and_refreshes_service_port(tmp_path: Path, monkeypatch) -> None:
+    state_path = _configure_local_state_env(monkeypatch, tmp_path)
+    monkeypatch.setattr(install_fenrir, "_ensure_env_file", lambda: Path(".env"))
+
+    resolved = iter([8765, 8771])
+    monkeypatch.setattr(install_fenrir, "resolve_service_port", lambda *_args, **_kwargs: next(resolved))
+
+    rc1 = install_fenrir.main(["--skip-install", "--host", "127.0.0.1", "--port", "8765"])
+    assert rc1 == 0
+
+    cfg = FenrirConfig.from_env()
+    state = load_local_state(state_path, defaults=default_local_state(cfg))
+    state.endpoint.model = "persisted-model"
+    state.endpoint.api_key = "sk-persisted"
+    state.conditions = ["eval_control"]
+    save_local_state(state_path, state)
+
+    rc2 = install_fenrir.main(["--skip-install", "--host", "127.0.0.1", "--port", "8770"])
+    assert rc2 == 0
+
+    updated = load_local_state(state_path, defaults=default_local_state(cfg))
+    assert updated.endpoint.model == "persisted-model"
+    assert updated.endpoint.api_key == "sk-persisted"
+    assert updated.conditions == ["eval_control"]
+    assert updated.service_port == 8771
+
+
+def test_install_overwrite_state_resets_user_settings(tmp_path: Path, monkeypatch) -> None:
+    state_path = _configure_local_state_env(monkeypatch, tmp_path)
+    monkeypatch.setattr(install_fenrir, "_ensure_env_file", lambda: Path(".env"))
+    monkeypatch.setattr(install_fenrir, "resolve_service_port", lambda *_args, **_kwargs: 8780)
+
+    cfg = FenrirConfig.from_env()
+    state = default_local_state(cfg)
+    state.endpoint.model = "custom-model"
+    state.endpoint.api_key = "sk-custom"
+    save_local_state(state_path, state)
+
+    rc = install_fenrir.main(
+        ["--skip-install", "--overwrite-state", "--host", "127.0.0.1", "--port", "8780"]
+    )
+    assert rc == 0
+
+    updated = load_local_state(state_path, defaults=default_local_state(cfg))
+    assert updated.endpoint.model == cfg.openai_model
+    assert updated.endpoint.api_key == cfg.openai_api_key
+    assert updated.service_port == 8780
+
+
+def test_install_then_start_repeatedly_is_stable(tmp_path: Path, monkeypatch) -> None:
+    _configure_local_state_env(monkeypatch, tmp_path)
+    monkeypatch.setattr(install_fenrir, "_ensure_env_file", lambda: Path(".env"))
+    monkeypatch.setattr(install_fenrir, "resolve_service_port", lambda *_args, **_kwargs: 8790)
+    rc = install_fenrir.main(["--skip-install", "--host", "127.0.0.1", "--port", "8790"])
+    assert rc == 0
+
+    calls: list[tuple[str, int, Path]] = []
+
+    def _fake_serve(*, host: str, port: int, state_path: Path | None = None) -> None:
+        assert state_path is not None
+        calls.append((host, port, state_path))
+
+    monkeypatch.setattr(start_fenrir, "resolve_service_port", lambda *_args, **_kwargs: 8790)
+    monkeypatch.setattr(start_fenrir, "serve_local_service", _fake_serve)
+
+    rc1 = start_fenrir.main(["--host", "127.0.0.1", "--port", "8790"])
+    rc2 = start_fenrir.main(["--host", "127.0.0.1", "--port", "8790"])
+
+    assert rc1 == 0
+    assert rc2 == 0
+    assert len(calls) == 2
+    assert all(call[1] == 8790 for call in calls)
+
+
+def test_install_preserve_path_keeps_config_changes_across_reinstall(tmp_path: Path, monkeypatch) -> None:
+    state_path = _configure_local_state_env(monkeypatch, tmp_path)
+    monkeypatch.setattr(install_fenrir, "_ensure_env_file", lambda: Path(".env"))
+    monkeypatch.setattr(install_fenrir, "resolve_service_port", lambda *_args, **_kwargs: 8805)
+
+    rc1 = install_fenrir.main(["--skip-install", "--host", "127.0.0.1", "--port", "8800"])
+    assert rc1 == 0
+
+    cfg = FenrirConfig.from_env()
+    state = load_local_state(state_path, defaults=default_local_state(cfg))
+    state.endpoint.provider = "mock"
+    state.endpoint.model = "mock://local"
+    save_local_state(state_path, state)
+
+    rc2 = install_fenrir.main(["--skip-install", "--host", "127.0.0.1", "--port", "8800"])
+    assert rc2 == 0
+
+    updated = load_local_state(state_path, defaults=default_local_state(cfg))
+    assert updated.endpoint.provider == "mock"
+    assert updated.endpoint.model == "mock://local"
