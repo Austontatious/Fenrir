@@ -42,6 +42,36 @@ python3 scripts/start_fenrir.py
 
 Then open the printed URL (default `http://127.0.0.1:8765/`).
 
+## Enthusiast Setup (Hook It Up Fast)
+
+Follow this once from repo root:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python3 scripts/install_fenrir.py
+python3 scripts/start_fenrir.py
+```
+
+Then in the local UI:
+
+1. Set `Provider` to `openai_compatible` (or `mock` for local smoke).
+2. Set `Base URL`:
+  - OpenAI: `https://api.openai.com/v1`
+  - local OpenAI-compatible server: your local base URL (for example `http://127.0.0.1:8000/v1`)
+3. Enter `API key/token` (if your endpoint requires one).
+4. Set `Model` (for example `gpt-4.1-mini` or your local model id).
+5. Click `Save Configuration`.
+6. Click `Test Connection`.
+7. Click `Run Evaluation`.
+8. Review the canonical readout and optional LLM-native export.
+
+Quick troubleshooting:
+
+- Port busy: rerun start with a different port (`--port 8800`) or let fallback scanning choose.
+- Reset local state: `python3 scripts/install_fenrir.py --overwrite-state`.
+- Environment check: `python3 scripts/check_fenrir_env.py --strict`.
+
 Useful checks:
 
 ```bash
