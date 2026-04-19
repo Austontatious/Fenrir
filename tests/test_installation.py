@@ -15,6 +15,7 @@ from fenrir.local_runtime import (
     save_local_state,
 )
 import fenrir.server as fenrir_server
+import fenrir.local_runtime as local_runtime
 import scripts.check_fenrir_env as check_fenrir_env
 import scripts.install_fenrir as install_fenrir
 import scripts.start_fenrir as start_fenrir
@@ -119,6 +120,54 @@ def test_malformed_config_gracefully_repairs(tmp_path: Path) -> None:
     assert result.should_persist is True
     assert result.state.endpoint.model == defaults.endpoint.model
     assert any("invalid JSON" in message for message in result.messages)
+
+
+def test_save_local_state_atomic_success(tmp_path: Path) -> None:
+    cfg = FenrirConfig.from_env()
+    state = default_local_state(cfg)
+    state.endpoint.model = "atomic-model"
+    path = tmp_path / "local_config.json"
+
+    save_local_state(path, state)
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == LOCAL_STATE_SCHEMA_VERSION
+    assert payload["endpoint"]["model"] == "atomic-model"
+
+
+def test_save_local_state_atomic_failure_preserves_existing(tmp_path: Path, monkeypatch) -> None:
+    cfg = FenrirConfig.from_env()
+    path = tmp_path / "local_config.json"
+    original = default_local_state(cfg)
+    original.endpoint.model = "before-failure"
+    save_local_state(path, original)
+    before = path.read_text(encoding="utf-8")
+
+    def _raise_replace(*_args, **_kwargs):
+        raise OSError("simulated replace failure")
+
+    monkeypatch.setattr(local_runtime.os, "replace", _raise_replace)
+    mutated = default_local_state(cfg)
+    mutated.endpoint.model = "after-failure"
+
+    try:
+        save_local_state(path, mutated)
+        assert False, "save_local_state should fail when os.replace fails"
+    except RuntimeError as exc:
+        assert "Failed to write local state atomically" in str(exc)
+
+    assert path.read_text(encoding="utf-8") == before
+
+
+def test_repeated_atomic_writes_stable(tmp_path: Path) -> None:
+    cfg = FenrirConfig.from_env()
+    path = tmp_path / "local_config.json"
+    state = default_local_state(cfg)
+
+    for idx in range(3):
+        state.endpoint.model = f"stable-model-{idx}"
+        save_local_state(path, state)
+        loaded = load_local_state(path, defaults=default_local_state(cfg))
+        assert loaded.endpoint.model == f"stable-model-{idx}"
 
 
 def test_install_persist_state_preserves_existing_by_default(tmp_path: Path) -> None:

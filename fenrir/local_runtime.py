@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import socket
+import tempfile
 from typing import Any
 
 from fenrir.config import FenrirConfig
@@ -294,11 +295,46 @@ def load_local_state(path: Path, *, defaults: LocalServiceState) -> LocalService
 
 def save_local_state(path: Path, state: LocalServiceState) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(_state_document_from_state(state), indent=2) + "\n", encoding="utf-8")
+    serialized = json.dumps(_state_document_from_state(state), indent=2) + "\n"
+    _write_text_atomic(path, serialized)
     try:
         os.chmod(path, 0o600)
     except OSError:
         pass
+
+
+def _write_text_atomic(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            handle.write(content)
+            handle.flush()
+            os.fsync(handle.fileno())
+            temp_path = Path(handle.name)
+
+        if temp_path is None:
+            raise RuntimeError("temporary path was not created")
+
+        os.replace(temp_path, path)
+    except Exception as exc:
+        if temp_path is not None:
+            try:
+                temp_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+        raise RuntimeError(
+            f"Failed to write local state atomically at {path}. "
+            "Existing state was left unchanged where possible. "
+            f"Cause: {exc}. Retry or inspect directory permissions."
+        ) from exc
 
 
 def load_hybrid_summary(summary_path: Path) -> dict[str, Any] | None:

@@ -36,6 +36,7 @@ Local state contract:
 - schema version: `fenrir.local_state.v1`
 - missing-version legacy state is migrated automatically
 - malformed/unsupported state is repaired with defaults and a state notice
+- writes are atomic (temp file + replace) to reduce partial-write corruption risk
 
 To explicitly reset local state to defaults during install:
 
