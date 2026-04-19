@@ -66,6 +66,8 @@ Startup logging prints:
 - health endpoint,
 - optional MCP mode status.
 
+Use the startup-printed resolved URL as runtime source of truth, especially when fallback scanning is active.
+
 ## Optional MCP Exposure
 
 Fenrir's MCP-facing surface remains optional and secondary.

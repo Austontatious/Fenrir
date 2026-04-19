@@ -114,10 +114,10 @@ def main(argv: list[str] | None = None) -> int:
         port=resolved_port,
         overwrite_state=bool(args.overwrite_state),
     )
-    url = build_service_url(args.host, resolved_port)
-    print(f"[fenrir-install] service URL: {url}")
-
     if args.start:
+        print(
+            "[fenrir-install] launching start script; final runtime URL will be printed by service startup logs."
+        )
         start_cmd = [
             sys.executable,
             str(REPO_ROOT / "scripts" / "start_fenrir.py"),
@@ -131,6 +131,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[fenrir-install] starting service: {' '.join(start_cmd)}")
         os.execv(sys.executable, start_cmd)
 
+    url = build_service_url(args.host, resolved_port)
+    print(f"[fenrir-install] service URL: {url}")
     print("[fenrir-install] setup complete")
     return 0
 

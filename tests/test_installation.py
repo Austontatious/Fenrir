@@ -322,6 +322,39 @@ def test_server_local_service_handles_bind_time_failure(monkeypatch, capsys) -> 
     assert "127.0.0.1:9205" in output
 
 
+def test_start_script_output_uses_resolved_port(monkeypatch, capsys) -> None:
+    monkeypatch.setattr(start_fenrir, "resolve_service_port", lambda *_args, **_kwargs: 9312)
+    monkeypatch.setattr(start_fenrir, "serve_local_service", lambda **_kwargs: None)
+
+    rc = start_fenrir.main(["--host", "127.0.0.1", "--port", "9310"])
+    output = capsys.readouterr().out
+
+    assert rc == 0
+    assert "requested port 9310 unavailable; using 9312" in output
+    assert "http://127.0.0.1:9312" in output
+
+
+def test_install_start_mode_defers_runtime_url_to_start_logs(tmp_path: Path, monkeypatch, capsys) -> None:
+    _configure_local_state_env(monkeypatch, tmp_path)
+    monkeypatch.setattr(install_fenrir, "_ensure_env_file", lambda: Path(".env"))
+    monkeypatch.setattr(install_fenrir, "resolve_service_port", lambda *_args, **_kwargs: 9320)
+
+    def _fake_execv(*_args, **_kwargs):
+        raise RuntimeError("execv-called")
+
+    monkeypatch.setattr(install_fenrir.os, "execv", _fake_execv)
+
+    try:
+        install_fenrir.main(["--skip-install", "--start", "--host", "127.0.0.1", "--port", "9320"])
+        assert False, "expected fake execv interruption"
+    except RuntimeError as exc:
+        assert "execv-called" in str(exc)
+
+    output = capsys.readouterr().out
+    assert "final runtime URL will be printed by service startup logs" in output
+    assert "[fenrir-install] service URL:" not in output
+
+
 def test_check_env_treats_fallback_port_as_runnable(monkeypatch) -> None:
     monkeypatch.setattr(check_fenrir_env.sys, "version_info", (3, 11, 0))
     monkeypatch.setattr(check_fenrir_env, "_check_imports", lambda: (True, []))

@@ -65,6 +65,8 @@ Explicit reset path (`--overwrite-state`):
 python3 scripts/install_fenrir.py --start
 ```
 
+When `--start` is used, trust the runtime URL printed by startup logs (`start_fenrir.py` / service output) as the source of truth.
+
 ## Separate Start
 
 ```bash
