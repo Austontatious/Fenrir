@@ -31,11 +31,32 @@ What it does:
 - preserves existing `.fenrir/local_config.json` by default (creates if missing),
 - resolves a usable local service port (default starts at `8765`).
 
+Local state contract:
+
+- schema version: `fenrir.local_state.v1`
+- missing-version legacy state is migrated automatically
+- malformed/unsupported state is repaired with defaults and a state notice
+
 To explicitly reset local state to defaults during install:
 
 ```bash
 python3 scripts/install_fenrir.py --overwrite-state
 ```
+
+## Preserve vs Refreshed Fields
+
+Default install path (`--overwrite-state` not set):
+
+- preserves user-owned settings from local state:
+  - provider/base URL/API key/model/timeout
+  - battery id and conditions
+  - MCP enabled/host/port
+- refreshes resolved runtime host/port from the current install invocation
+
+Explicit reset path (`--overwrite-state`):
+
+- resets user-owned settings to defaults from env/config
+- then applies resolved runtime host/port from the current install invocation
 
 ## Start Immediately After Install
 

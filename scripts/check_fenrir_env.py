@@ -14,7 +14,7 @@ from fenrir.local_runtime import (
     build_service_url,
     default_local_state,
     is_port_open,
-    load_local_state,
+    load_local_state_result,
     resolve_service_port,
 )
 
@@ -77,9 +77,12 @@ def main(argv: list[str] | None = None) -> int:
     for line in import_messages:
         print(line)
 
-    state = load_local_state(config.local_config_path, defaults=default_local_state(config))
+    load_result = load_local_state_result(config.local_config_path, defaults=default_local_state(config))
+    state = load_result.state
     print(f"[ok] local config path: {config.local_config_path}")
     print(f"[info] configured service url: {build_service_url(state.service_host, state.service_port)}")
+    for message in load_result.messages:
+        print(f"[warn] state notice: {message}")
 
     requested_port = int(args.port)
     if is_port_open(args.host, requested_port):

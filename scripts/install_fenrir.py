@@ -16,7 +16,7 @@ from fenrir.config import FenrirConfig
 from fenrir.local_runtime import (
     build_service_url,
     default_local_state,
-    load_local_state,
+    load_local_state_result,
     resolve_service_port,
     save_local_state,
 )
@@ -67,10 +67,15 @@ def _persist_state(
 ) -> None:
     target_path = state_path or config.local_config_path
     if overwrite_state:
+        # Explicit reset path: replace user-owned settings with canonical defaults.
         state = default_local_state(config)
         init_mode = "reset"
     else:
-        state = load_local_state(target_path, defaults=default_local_state(config))
+        # Preserve-by-default path: keep user-owned endpoint/battery/settings from existing state.
+        load_result = load_local_state_result(target_path, defaults=default_local_state(config))
+        for message in load_result.messages:
+            print(f"[fenrir-install] state notice: {message}")
+        state = load_result.state
         init_mode = "preserved"
 
     state.service_host = host

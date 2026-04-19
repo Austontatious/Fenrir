@@ -12,6 +12,7 @@ from fenrir.config import FenrirConfig
 
 
 UI_READOUT_SCHEMA_VERSION = "fenrir.ui_readout.v1"
+LOCAL_STATE_SCHEMA_VERSION = "fenrir.local_state.v1"
 
 
 def utc_now_iso() -> str:
@@ -113,6 +114,16 @@ class LocalServiceState:
         )
 
 
+@dataclass(frozen=True)
+class LocalStateLoadResult:
+    state: LocalServiceState
+    source_version: str | None
+    migrated: bool = False
+    repaired: bool = False
+    should_persist: bool = False
+    messages: tuple[str, ...] = ()
+
+
 def coerce_port(value: Any, default: int) -> int:
     try:
         port = int(value)
@@ -174,21 +185,116 @@ def resolve_service_port(host: str, preferred_port: int, *, scan_limit: int = 25
     raise RuntimeError(f"No open port found near {host}:{preferred_port} (scan_limit={scan_limit})")
 
 
-def load_local_state(path: Path, *, defaults: LocalServiceState) -> LocalServiceState:
+def _state_document_from_state(state: LocalServiceState) -> dict[str, Any]:
+    payload = state.to_dict()
+    payload["schema_version"] = LOCAL_STATE_SCHEMA_VERSION
+    return payload
+
+
+def load_local_state_result(path: Path, *, defaults: LocalServiceState) -> LocalStateLoadResult:
     if not path.exists():
-        return defaults
+        return LocalStateLoadResult(
+            state=defaults,
+            source_version=None,
+            migrated=False,
+            repaired=False,
+            should_persist=False,
+            messages=(),
+        )
     try:
         payload = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
-        return defaults
+        return LocalStateLoadResult(
+            state=defaults,
+            source_version=None,
+            repaired=True,
+            should_persist=True,
+            messages=(
+                f"Local state file is invalid JSON and was reinitialized from defaults: {path}",
+                "Use --overwrite-state if you want to intentionally reset the local state contract.",
+            ),
+        )
+    except OSError as exc:
+        return LocalStateLoadResult(
+            state=defaults,
+            source_version=None,
+            repaired=True,
+            should_persist=False,
+            messages=(
+                f"Unable to read local state file; defaults were used: {path} ({exc})",
+                "Check file permissions or path ownership if this persists.",
+            ),
+        )
+
     if not isinstance(payload, dict):
-        return defaults
-    return LocalServiceState.from_dict(payload, defaults=defaults)
+        return LocalStateLoadResult(
+            state=defaults,
+            source_version=None,
+            repaired=True,
+            should_persist=True,
+            messages=(
+                f"Local state file did not contain an object and was reinitialized: {path}",
+            ),
+        )
+
+    source_version_raw = payload.get("schema_version")
+    if source_version_raw is None:
+        # Legacy contract (pre-versioned): migrate in place by retaining known user-owned keys.
+        migrated_state = LocalServiceState.from_dict(payload, defaults=defaults)
+        return LocalStateLoadResult(
+            state=migrated_state,
+            source_version=None,
+            migrated=True,
+            repaired=False,
+            should_persist=True,
+            messages=(
+                "Migrated legacy local state (missing schema_version) to fenrir.local_state.v1.",
+            ),
+        )
+
+    source_version = str(source_version_raw).strip()
+    if source_version != LOCAL_STATE_SCHEMA_VERSION:
+        return LocalStateLoadResult(
+            state=defaults,
+            source_version=source_version,
+            repaired=True,
+            should_persist=True,
+            messages=(
+                f"Unsupported local state schema_version '{source_version}' was reset to defaults.",
+                f"Supported schema_version: {LOCAL_STATE_SCHEMA_VERSION}.",
+            ),
+        )
+
+    try:
+        state = LocalServiceState.from_dict(payload, defaults=defaults)
+    except Exception as exc:
+        return LocalStateLoadResult(
+            state=defaults,
+            source_version=source_version,
+            repaired=True,
+            should_persist=True,
+            messages=(
+                f"Local state values were invalid and defaults were applied: {exc}",
+            ),
+        )
+
+    return LocalStateLoadResult(
+        state=state,
+        source_version=source_version,
+        migrated=False,
+        repaired=False,
+        should_persist=False,
+        messages=(),
+    )
+
+
+def load_local_state(path: Path, *, defaults: LocalServiceState) -> LocalServiceState:
+    return load_local_state_result(path, defaults=defaults).state
 
 
 def save_local_state(path: Path, state: LocalServiceState) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(state.to_dict(), indent=2) + "\n", encoding="utf-8")
+    path.write_text(json.dumps(_state_document_from_state(state), indent=2) + "\n", encoding="utf-8")
     try:
         os.chmod(path, 0o600)
     except OSError:

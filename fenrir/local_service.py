@@ -21,7 +21,7 @@ from fenrir.local_runtime import (
     default_local_state,
     llm_native_export,
     load_hybrid_summary,
-    load_local_state,
+    load_local_state_result,
     mask_secret,
     save_local_state,
     utc_now_iso,
@@ -35,7 +35,10 @@ class FenrirLocalService:
 
     def __post_init__(self) -> None:
         defaults = default_local_state(self.config)
-        self.state = load_local_state(self.state_path, defaults=defaults)
+        load_result = load_local_state_result(self.state_path, defaults=defaults)
+        self.state = load_result.state
+        for message in load_result.messages:
+            print(f"[fenrir-local] state notice: {message}")
         save_local_state(self.state_path, self.state)
 
     @property

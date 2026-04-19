@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import socket
 
 from fenrir.config import FenrirConfig
 from fenrir.local_runtime import (
+    LOCAL_STATE_SCHEMA_VERSION,
     LocalServiceState,
     default_local_state,
     load_local_state,
+    load_local_state_result,
     resolve_service_port,
     save_local_state,
 )
@@ -39,6 +42,83 @@ def test_local_state_roundtrip(tmp_path: Path) -> None:
     assert loaded.service_port == 9876
     assert loaded.endpoint.api_key == "test_secret_key"
     assert loaded.endpoint.to_public_dict()["has_api_key"] is True
+
+
+def test_load_current_version_config(tmp_path: Path) -> None:
+    cfg = FenrirConfig.from_env()
+    defaults = default_local_state(cfg)
+    state = default_local_state(cfg)
+    state.endpoint.model = "custom-model-v1"
+    path = tmp_path / "local_config.json"
+    save_local_state(path, state)
+
+    result = load_local_state_result(path, defaults=defaults)
+    assert result.source_version == LOCAL_STATE_SCHEMA_VERSION
+    assert result.migrated is False
+    assert result.repaired is False
+    assert result.should_persist is False
+    assert result.state.endpoint.model == "custom-model-v1"
+
+
+def test_migrate_older_version_config(tmp_path: Path) -> None:
+    cfg = FenrirConfig.from_env()
+    defaults = default_local_state(cfg)
+    path = tmp_path / "local_config.json"
+    legacy_payload = {
+        "service": {"host": "127.0.0.1", "port": 9800},
+        "mcp": {"enabled": True, "host": "127.0.0.1", "port": 9900},
+        "battery_id": "frontier_alignment_v1",
+        "conditions": ["eval_control"],
+        "endpoint": {
+            "provider": "openai_compatible",
+            "base_url": "https://example.invalid/v1",
+            "api_key": "sk-legacy",
+            "model": "legacy-model",
+            "timeout_seconds": 55.0,
+        },
+    }
+    path.write_text(json.dumps(legacy_payload), encoding="utf-8")
+
+    result = load_local_state_result(path, defaults=defaults)
+    assert result.source_version is None
+    assert result.migrated is True
+    assert result.repaired is False
+    assert result.should_persist is True
+    assert result.state.endpoint.model == "legacy-model"
+    assert any("Migrated legacy local state" in message for message in result.messages)
+
+
+def test_missing_version_field_migrates_legacy_shape(tmp_path: Path) -> None:
+    cfg = FenrirConfig.from_env()
+    defaults = default_local_state(cfg)
+    path = tmp_path / "local_config.json"
+    path.write_text(
+        json.dumps(
+            {
+                "service": {"host": "127.0.0.1", "port": 9055},
+                "endpoint": {"model": "missing-version-model"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    result = load_local_state_result(path, defaults=defaults)
+    assert result.migrated is True
+    assert result.should_persist is True
+    assert result.state.service_port == 9055
+    assert result.state.endpoint.model == "missing-version-model"
+
+
+def test_malformed_config_gracefully_repairs(tmp_path: Path) -> None:
+    cfg = FenrirConfig.from_env()
+    defaults = default_local_state(cfg)
+    path = tmp_path / "local_config.json"
+    path.write_text("{not-valid-json", encoding="utf-8")
+
+    result = load_local_state_result(path, defaults=defaults)
+    assert result.repaired is True
+    assert result.should_persist is True
+    assert result.state.endpoint.model == defaults.endpoint.model
+    assert any("invalid JSON" in message for message in result.messages)
 
 
 def test_install_persist_state_preserves_existing_by_default(tmp_path: Path) -> None:
