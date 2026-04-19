@@ -69,7 +69,15 @@ def _run_local_service(*, config: FenrirConfig, host: str, port: int, strict_por
     if resolved != port:
         print(f"[fenrir-server] requested port {port} unavailable; using {resolved}")
 
-    serve_local_service(host=host, port=resolved, state_path=config.local_config_path)
+    try:
+        serve_local_service(host=host, port=resolved, state_path=config.local_config_path)
+    except RuntimeError as exc:
+        print(f"[fenrir-server] error: {exc}")
+        print(
+            f"[fenrir-server] bind-time failure at {host}:{resolved}. "
+            "Try another --port, increase --port-scan-limit, or use --strict-port only when exact port is required."
+        )
+        return 2
     return 0
 
 

@@ -60,7 +60,15 @@ def main(argv: list[str] | None = None) -> int:
 
     url = build_service_url(args.host, resolved_port)
     print(f"[fenrir-start] starting Fenrir local service at {url}")
-    serve_local_service(host=args.host, port=resolved_port, state_path=args.state_path)
+    try:
+        serve_local_service(host=args.host, port=resolved_port, state_path=args.state_path)
+    except RuntimeError as exc:
+        print(f"[fenrir-start] error: {exc}")
+        print(
+            f"[fenrir-start] bind-time failure at {args.host}:{resolved_port}. "
+            "Try another --port, increase --port-scan-limit, or use --strict-port only when exact port is required."
+        )
+        return 2
     return 0
 
 

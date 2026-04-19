@@ -395,7 +395,14 @@ def serve_local_service(*, host: str, port: int, state_path: Path | None = None)
     app.state.service_port = port
     save_local_state(app.state_path, app.state)
 
-    server = FenrirHTTPServer((host, port), app)
+    try:
+        server = FenrirHTTPServer((host, port), app)
+    except OSError as exc:
+        raise RuntimeError(
+            f"Unable to bind Fenrir local service to {host}:{port}: {exc}. "
+            "The port may have been claimed after pre-scan."
+        ) from exc
+
     base_url = build_service_url(host, port)
     print(f"[fenrir-local] service listening on {base_url}")
     print(f"[fenrir-local] setup UI: {base_url}/")
