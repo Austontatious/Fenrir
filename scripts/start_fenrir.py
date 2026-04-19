@@ -63,10 +63,11 @@ def main(argv: list[str] | None = None) -> int:
     try:
         serve_local_service(host=args.host, port=resolved_port, state_path=args.state_path)
     except RuntimeError as exc:
-        print(f"[fenrir-start] error: {exc}")
+        print(f"[fenrir-start] startup error: {exc}")
         print(
-            f"[fenrir-start] bind-time failure at {args.host}:{resolved_port}. "
-            "Try another --port, increase --port-scan-limit, or use --strict-port only when exact port is required."
+            f"[fenrir-start] startup failed after selecting {args.host}:{resolved_port}. "
+            "Try another --port, increase --port-scan-limit, check local state path permissions, "
+            "or use --strict-port only when exact port is required."
         )
         return 2
     return 0

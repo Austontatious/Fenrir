@@ -110,3 +110,10 @@ python3 scripts/start_fenrir.py --host 127.0.0.1 --port 8765 --strict-port
 ```
 
 If `--strict-port` is not set, Fenrir scans upward for an open port.
+
+## Troubleshooting
+
+- If startup fails after a successful pre-scan, another process may have claimed the port between scan and bind.
+- Use another `--port` or increase `--port-scan-limit`.
+- Use `--strict-port` only when exact-port behavior is required.
+- If local state writes fail, verify permissions on `.fenrir/` and retry.

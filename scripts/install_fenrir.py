@@ -108,12 +108,20 @@ def main(argv: list[str] | None = None) -> int:
     if resolved_port != args.port:
         print(f"[fenrir-install] requested port {args.port} unavailable; using {resolved_port}")
 
-    _persist_state(
-        config,
-        host=args.host,
-        port=resolved_port,
-        overwrite_state=bool(args.overwrite_state),
-    )
+    try:
+        _persist_state(
+            config,
+            host=args.host,
+            port=resolved_port,
+            overwrite_state=bool(args.overwrite_state),
+        )
+    except RuntimeError as exc:
+        print(f"[fenrir-install] error: {exc}")
+        print(
+            "[fenrir-install] local state update failed; check file permissions/path ownership. "
+            "Existing state is preserved where possible."
+        )
+        return 2
     if args.start:
         print(
             "[fenrir-install] launching start script; final runtime URL will be printed by service startup logs."

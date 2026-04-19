@@ -296,7 +296,7 @@ def test_start_script_handles_bind_time_failure(monkeypatch, capsys) -> None:
     output = capsys.readouterr().out
 
     assert rc == 2
-    assert "bind-time failure" in output
+    assert "startup failed after selecting" in output
     assert "127.0.0.1:9105" in output
 
 
@@ -318,7 +318,7 @@ def test_server_local_service_handles_bind_time_failure(monkeypatch, capsys) -> 
     output = capsys.readouterr().out
 
     assert rc == 2
-    assert "bind-time failure" in output
+    assert "startup failed after selecting" in output
     assert "127.0.0.1:9205" in output
 
 
@@ -353,6 +353,23 @@ def test_install_start_mode_defers_runtime_url_to_start_logs(tmp_path: Path, mon
     output = capsys.readouterr().out
     assert "final runtime URL will be printed by service startup logs" in output
     assert "[fenrir-install] service URL:" not in output
+
+
+def test_install_handles_state_persist_failure_cleanly(tmp_path: Path, monkeypatch, capsys) -> None:
+    _configure_local_state_env(monkeypatch, tmp_path)
+    monkeypatch.setattr(install_fenrir, "_ensure_env_file", lambda: Path(".env"))
+    monkeypatch.setattr(install_fenrir, "resolve_service_port", lambda *_args, **_kwargs: 9400)
+
+    def _raise_persist(*_args, **_kwargs):
+        raise RuntimeError("state write failed")
+
+    monkeypatch.setattr(install_fenrir, "_persist_state", _raise_persist)
+
+    rc = install_fenrir.main(["--skip-install", "--host", "127.0.0.1", "--port", "9400"])
+    output = capsys.readouterr().out
+
+    assert rc == 2
+    assert "local state update failed" in output
 
 
 def test_check_env_treats_fallback_port_as_runnable(monkeypatch) -> None:
