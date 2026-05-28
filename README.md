@@ -129,6 +129,7 @@ Fenrir is named for the shadow metaphor: latent risk patterns that are easy to m
 
 ## Documentation Map
 
+- `docs/README.md`
 - `docs/installation.md`
 - `docs/local-service.md`
 - `docs/frontend-usage.md`
@@ -137,3 +138,5 @@ Fenrir is named for the shadow metaphor: latent risk patterns that are easy to m
 - `docs/mvp-freeze.md`
 - `docs/mvp-freeze-report.md`
 - `docs/outreach_note_daniel_hulme.md`
+- `docs/archive/reports/`
+- `reports/repo_cleanup_2026-05-28.md`
